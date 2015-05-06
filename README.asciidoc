@@ -1,0 +1,48 @@
+== Config - Smart and flexible system configuration
+
+image:http://clojars.org/io.aviso/toolchest/latest-version.svg[Clojars Project, link="http://clojars.org/io.aviso/config"]
+
+image:https://drone.io/github.com/AvisoNovate/toolchest/status.png[Build Status, link="https://drone.io/github.com/AvisoNovate/config"]
+
+Config is a very small library used to handle configuration of a server; it works
+quite well with system defined in terms of
+link:https://github.com/stuartsierra/component[Stuart Sierra's component library].
+
+Config reads a series of files, primarily from the classpath.
+The files contain contain configuration data, in either
+link:http://yaml.org/[YAML] or
+link:https://github.com/edn-format/edn[EDN] format.
+
+The files are read in a specific order, based on a set of _profiles_.
+The name of the file to read is based on the profile.
+
+The contents of all the files are converted to Clojure maps (with keyword keys) and are
+deep-merged together.
+
+Meanwhile, a set of
+link:https://github.com/Prismatic/schema[schemas] are merged together, and used to validate and coerce
+the data read from the individual configuration files.
+
+The intent of profiles is that there is an approximate mapping between components and profiles.
+Each component will provide a schema (for validation and coercion) and profiles are used to ensure
+the correct configuration data is read.
+
+But what about the
+link:http://12factor.net/config[12 Factor App]'s guideline to store configuration only as environment
+variables?
+This is embraced by config, because the files may contain environment variable references that are expanded
+at runtime, before parsing of the file content.
+
+At link:http://www.aviso.io/[Aviso], we use these features in a number of ways.
+For example, for quick testing we combine a number of microservices (each of which
+has its own configuration profile and schema) together into a single system, and specify a large set of profiles.
+Meanwhile, in production (on AWS) we can build a smaller system with a single microservice, and single profile.
+We can also provide an additional configuration file that enables configuration overrides based on environment variables
+set by CloudFormation.
+
+Config is easily extensible to override how configuration files are named, and to support types
+of configuration files (by adding new extensions and parsers).
+
+Config is available under the terms of the Apache Software License 2.0.
+
+link:http://howardlewisship.com/io.aviso/config/[API Documentation]
