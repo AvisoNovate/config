@@ -1,8 +1,8 @@
 == Config - Smart and flexible system configuration
 
-image:http://clojars.org/io.aviso/toolchest/latest-version.svg[Clojars Project, link="http://clojars.org/io.aviso/config"]
+image:http://clojars.org/io.aviso/config/latest-version.svg[Clojars Project, link="http://clojars.org/io.aviso/config"]
 
-image:https://drone.io/github.com/AvisoNovate/toolchest/status.png[Build Status, link="https://drone.io/github.com/AvisoNovate/config"]
+image:https://drone.io/github.com/AvisoNovate/config/status.png[Build Status, link="https://drone.io/github.com/AvisoNovate/config"]
 
 Config is a very small library used to handle configuration of a server; it works
 quite well with system defined in terms of
