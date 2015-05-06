@@ -1,0 +1,2 @@
+{:web-server {:port      8080
+              :pool-size 25}}

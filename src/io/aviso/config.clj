@@ -20,6 +20,7 @@
             [clojure.edn :as edn]
             [clojure.string :as str]
             [io.aviso.tracker :as t]
+            [io.aviso.toolchest.macros :refer [cond-let]]
             [clojure.java.io :as io]))
 
 (defn- resources
@@ -101,6 +102,55 @@
                         {:path       path
                          :extensions extensions})))))
 
+(defn merge-value
+  "Merges a command-line argument into a map. The command line argument is of the form:
+
+       path=value
+
+   where path is the path to value; it is split at slashes and the key converted to keywords.
+
+   e.g.
+
+       web-server/port=8080
+
+   is equivalent to
+
+       (assoc-in m [:web-server :port] \"8080\")
+
+   "
+  {:since "0.1.1"}
+  [m arg]
+  (cond-let
+    [[_ path value] (re-matches #"([^=]+)=(.*)" arg)]
+
+    (not path)
+    (throw (IllegalArgumentException. (format "Unable to parse argument `%s'." arg)))
+
+    [keys (map keyword (str/split path #"/"))]
+
+    :else
+    (assoc-in m keys value)))
+
+(defn- parse-args
+  [args]
+  (loop [remaining-args   args
+         additional-files []
+         overrides        {}]
+    (cond-let
+      (empty? remaining-args)
+      [additional-files overrides]
+
+      [arg (first remaining-args)]
+
+      (= "--load" arg)
+      (let [[_ file-name & more-args] remaining-args]
+        (recur more-args (conj additional-files file-name) overrides))
+
+      :else
+      (recur (rest remaining-args)
+             additional-files
+             (merge-value overrides arg)))))
+
 (defn assemble-configuration
   "Reads the configuration, as specified by the options.
 
@@ -109,6 +159,13 @@
 
   Environment variables are of the form `${ENV_VAR}` and are simply replaced (with no special quoting) in
   the string.
+
+  The :args option is passed command line arguments (as from a -main function). The arguments
+  are used to add further additional files to load, and provide additional overrides.
+
+  Arguments are either \"--load\" followed by a path name, or \"path=value\".
+
+  In the second case, the path and value are as defined by [[merge-value]].
 
   :prefix (required)
   : The prefix to place at the start of each configuration file read.
@@ -121,6 +178,10 @@
     normal resources.
     This is typically used to provide an editable (outside the classpath) file for final
     production configuration overrides.
+
+  :args
+  : Command line arguments to parse; these yield yet more additional files and
+    the last set of overrides.
 
   :overrides
   : A map of configuration data that is overlayed (using a deep merge)
@@ -141,23 +202,25 @@
   Any additional files will then be loaded.
 
   The contents of each file are deep-merged together; later files override earlier files."
-  [{:keys [prefix schemas overrides profiles resource-path extensions additional-files]
+  [{:keys [prefix schemas overrides profiles resource-path extensions additional-files args]
     :or   {extensions    default-extensions
            resource-path default-resource-path}}]
   (assert prefix ":prefix option not specified")
   (let [env-map       (into {} (System/getenv))
+        [arg-files arg-overrides] (parse-args args)
         raw           (for [profile (concat [:default] profiles [:local nil])
                             [extension parser] extensions
                             :let [path (resource-path prefix profile extension)]]
                         (read-each path parser env-map))
         flattened     (apply concat raw)
-        extras        (for [path additional-files
+        extras        (for [path (concat additional-files arg-files)
                             :let [parser (get-parser path extensions)]]
                         (read-single (io/file path) parser env-map))
         conj'         (fn [x coll] (conj coll x))
         merged        (->> (concat flattened extras)
                            vec
                            (conj' overrides)
+                           (conj' arg-overrides)
                            (apply merge-with deep-merge))
         merged-schema (apply merge-with deep-merge schemas)
         coercer       (coerce/coercer merged-schema coerce/string-coercion-matcher)
