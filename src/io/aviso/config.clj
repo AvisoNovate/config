@@ -66,7 +66,9 @@
     :else new))
 
 (def default-extensions
-  "Provides \"yaml\" and \"edn\" extensions."
+  "The default mapping from file extension to a parser for content from such a file.
+
+  Provides parsers for the \"yaml\" and \"edn\" extensions."
   {"yaml" #(yaml/parse-string % true)
    "edn"  edn/read-string})
 
@@ -91,7 +93,7 @@
        "configuration."
        extension))
 
-(defn get-parser [^String path extensions]
+(defn- get-parser [^String path extensions]
   (let [dotx      (.lastIndexOf path ".")
         extension (subs path (inc dotx))]
     (or (get extensions extension)
@@ -125,7 +127,7 @@
     on the configuration data read from the files, before validation and coercion.
 
   :profiles
-  : A seq of keywords that identify which profiles should be loaded an in what order.
+  : A seq of keywords that identify which profiles should be loaded and in what order.
 
   :resource-path
   : A function that builds resource paths from prefix, profile, and extension.
