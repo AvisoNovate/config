@@ -11,7 +11,8 @@
                         :user     s/Str
                         :password s/Str}})
 
-(s/defschema Env {:home s/Str})
+(s/defschema Env {:home s/Str
+                  :defaulted s/Str})
 
 (describe "io.aviso.config"
 
@@ -85,7 +86,8 @@
 
       (->> (assemble-configuration {:prefix  "env"
                                     :schemas [Env]})
-           (should= {:home (System/getenv "HOME")})))
+           (should= {:home (System/getenv "HOME")
+                     :defaulted "none"})))
 
   (it "can associate and extract schemas"
       (->> [(with-config-schema {} WebServer)

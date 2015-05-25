@@ -32,12 +32,14 @@
 (defn- expand-env-vars
   [source env-map]
   (str/replace source
-               #"\$\{((?!\$\{).*)\}"
-               (fn [[expansion env-var]]
-                 (or (get env-map env-var)
-                     (throw (ex-info (format "Unable to find expansion for `%s'." expansion)
-                                     {:env-var env-var
-                                      :source  source}))))))
+               #"\$\{(.*)\}"
+               (fn [[expansion contents :as match]]
+                 (let [[env-var default] (str/split contents #":")]
+                   (or (get env-map env-var)
+                       default
+                       (throw (ex-info (format "Unable to find expansion for `%s'." expansion)
+                                       {:env-var env-var
+                                        :source  source})))))))
 
 (defn- read-single
   "Reads a single configuration file from a URL, expanding environment variables, and
@@ -157,8 +159,8 @@
   Inside each configuration file, the content is scanned for environment variables; these are substituted
   from environment. Such substitution occurs before any parsing takes place.
 
-  Environment variables are of the form `${ENV_VAR}` and are simply replaced (with no special quoting) in
-  the string.
+  Environment variables are of the form `${ENV_VAR}` or `${ENV_VAR:<default>}`
+  and are simply replaced (with no special quoting) in the string.
 
   The :args option is passed command line arguments (as from a -main function). The arguments
   are used to add further additional files to load, and provide additional overrides.
