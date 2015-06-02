@@ -87,6 +87,11 @@
                                     :schemas [Env]})
            (should= {:home (System/getenv "HOME")})))
 
+  (it "can use a default value on an environment variable"
+      (->> (assemble-configuration {:prefix "envdef"
+                                    :schemas [{s/Any s/Any}]})
+           (should= {:magic "plugh"})))
+
   (it "can associate and extract schemas"
       (->> [(with-config-schema {} WebServer)
             {}

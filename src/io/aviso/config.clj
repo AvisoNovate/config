@@ -29,15 +29,24 @@
   [name]
   (-> (Thread/currentThread) .getContextClassLoader (.getResources name) enumeration-seq))
 
+(defn- split-env-ref
+  [^String env-ref]
+  (let [x (.indexOf env-ref ":")]
+    (if (pos? x)
+      [(subs env-ref x)
+       (subs env-ref (inc x))]
+      [env-ref])))
+
 (defn- expand-env-vars
   [source env-map]
   (str/replace source
                #"\$\{((?!\$\{).*)\}"
-               (fn [[expansion env-var]]
-                 (or (get env-map env-var)
-                     (throw (ex-info (format "Unable to find expansion for `%s'." expansion)
-                                     {:env-var env-var
-                                      :source  source}))))))
+               (fn [[expansion env-var-reference]]
+                 (let [[env-var default-value] (split-env-ref env-var-reference)]
+                   (or (get env-map env-var default-value)
+                       (throw (ex-info (format "Unable to find expansion for `%s'." expansion)
+                                       {:env-var env-var
+                                        :source  source})))))))
 
 (defn- read-single
   "Reads a single configuration file from a URL, expanding environment variables, and
@@ -159,6 +168,10 @@
 
   Environment variables are of the form `${ENV_VAR}` and are simply replaced (with no special quoting) in
   the string.
+  Environment variables with no default must exist, or an exception is thrown.
+
+  A default value for an environment variable may be specified after a colon; example:  `${HOST:localhost}`
+  will be the value of environmant variable `HOST`, OR `localhost` if not defined.
 
   The :args option is passed command line arguments (as from a -main function). The arguments
   are used to add further additional files to load, and provide additional overrides.
