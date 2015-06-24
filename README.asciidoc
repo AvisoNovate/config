@@ -3,8 +3,11 @@
 image:http://clojars.org/io.aviso/config/latest-version.svg[Clojars Project, link="http://clojars.org/io.aviso/config"]
 
 Config is a very small library used to handle configuration of a server; it works
-quite well with system defined in terms of
+quite well with a system defined in terms of
 link:https://github.com/stuartsierra/component[Stuart Sierra's component library].
+
+link:https://medium.com/@hlship/microservices-configuration-and-clojure-4f6807ef9bea[This posting] provides
+a lot of detail on the requirements and capabilities of config.
 
 Config reads a series of files, primarily from the classpath.
 The files contain contain configuration data, in either
