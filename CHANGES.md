@@ -1,3 +1,7 @@
+## 0.1.5, 0.1.6 - 15 Jul 2015
+
+Reconcile Clojars and repository version numbers.
+
 ## 0.1.4 - 24 Jun 2015
 
 Fixed a bug where a default value for an environment variable would always be selected,

@@ -33,14 +33,14 @@
   [^String env-ref]
   (let [x (.indexOf env-ref ":")]
     (if (pos? x)
-      [(subs env-ref x)
+      [(subs env-ref 0 x)
        (subs env-ref (inc x))]
       [env-ref])))
 
 (defn- expand-env-vars
   [source env-map]
   (str/replace source
-               #"\$\{((?!\$\{).*)\}"
+               #"\$\{((?!\$\{).*?)\}"
                (fn [[expansion env-var-reference]]
                  (let [[env-var default-value] (split-env-ref env-var-reference)]
                    (or (get env-map env-var default-value)
