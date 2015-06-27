@@ -1,1 +1,2 @@
-magic: ${XYZZYX:plugh}
+use-default: ${XYZZYX:default-plugh}
+use-env: ${HOME:not-home}

@@ -33,7 +33,7 @@
   [^String env-ref]
   (let [x (.indexOf env-ref ":")]
     (if (pos? x)
-      [(subs env-ref x)
+      [(subs env-ref 0 x)
        (subs env-ref (inc x))]
       [env-ref])))
 

@@ -90,7 +90,8 @@
   (it "can use a default value on an environment variable"
       (->> (assemble-configuration {:prefix "envdef"
                                     :schemas [{s/Any s/Any}]})
-           (should= {:magic "plugh"})))
+           (should= {:use-default "default-plugh"
+                     :use-env     (System/getenv "HOME")})))
 
   (it "can associate and extract schemas"
       (->> [(with-config-schema {} WebServer)
