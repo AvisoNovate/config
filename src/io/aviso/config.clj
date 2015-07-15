@@ -40,7 +40,7 @@
 (defn- expand-env-vars
   [source env-map]
   (str/replace source
-               #"\$\{((?!\$\{).*)\}"
+               #"\$\{((?!\$\{).*?)\}"
                (fn [[expansion env-var-reference]]
                  (let [[env-var default-value] (split-env-ref env-var-reference)]
                    (or (get env-map env-var default-value)
