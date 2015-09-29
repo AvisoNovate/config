@@ -1,4 +1,4 @@
-## 0.1.7 - 29 Sep 2015
+## 0.1.8 - 29 Sep 2015
 
 Update a bunch of dependencies to latest versions.
 
