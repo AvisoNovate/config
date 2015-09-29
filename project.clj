@@ -1,20 +1,20 @@
-(defproject io.aviso/config "0.1.6"
+(defproject io.aviso/config "0.1.7"
             :description "Configure a system using YAML or EDN files"
             :url "https://github.com/AvisoNovate/config"
             :license {:name "Apache Sofware License 2.0"
                       :url  "http://www.apache.org/licenses/LICENSE-2.0.html"}
             :profiles {:dev
-                       {:dependencies [[io.aviso/pretty "0.1.18"]
-                                       [speclj "3.2.0"]
+                       {:dependencies [[io.aviso/pretty "0.1.19"]
+                                       [speclj "3.3.1"]
                                        [ch.qos.logback/logback-classic "1.1.3"]
                                        [criterium "0.4.3"]]}}
             ;; List "resolved" dependencies first, which occur when there are conflicts.
             ;; We pin down the version we want, then exclude anyone who disagrees.
-            :dependencies [[org.clojure/clojure "1.6.0"]
-                           [io.aviso/tracker "0.1.6"]
-                           [prismatic/schema "0.4.0"]
+            :dependencies [[org.clojure/clojure "1.7.0"]
+                           [io.aviso/tracker "0.1.7"]
+                           [prismatic/schema "1.0.1"]
                            [clj-yaml "0.4.0"]]
-            :plugins [[speclj "3.2.0"]
+            :plugins [[speclj "3.3.1"]
                       [lein-shell "0.4.0"]]
             :shell {:commands {"scp" {:dir "doc"}}}
             :aliases {"deploy-doc" ["shell"
