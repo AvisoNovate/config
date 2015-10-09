@@ -1,4 +1,4 @@
-(defproject io.aviso/config "0.1.8"
+(defproject io.aviso/config "0.1.9"
             :description "Configure a system using YAML or EDN files"
             :url "https://github.com/AvisoNovate/config"
             :license {:name "Apache Sofware License 2.0"
@@ -13,6 +13,7 @@
             :dependencies [[org.clojure/clojure "1.7.0"]
                            [io.aviso/tracker "0.1.7"]
                            [prismatic/schema "1.0.1"]
+                           [medley "0.7.0"]
                            [clj-yaml "0.4.0"]]
             :plugins [[speclj "3.3.1"]
                       [lein-shell "0.4.0"]]

@@ -41,7 +41,7 @@ Meanwhile, in production (on AWS) we can build a smaller system with a single mi
 We can also provide an additional configuration file that enables configuration overrides based on environment variables
 set by CloudFormation.
 
-Config is easily extensible to override how configuration files are named, and to support types
+Config is easily extensible to override how configuration files are named, and to support new formats
 of configuration files (by adding new extensions and parsers).
 
 Config is available under the terms of the Apache Software License 2.0.

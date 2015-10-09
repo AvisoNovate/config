@@ -1,3 +1,8 @@
+## 0.1.9 - UNRELEASED
+
+New :properties option, which specifies properties that can be substituted using
+the same syntax as environment variable substitution.
+
 ## 0.1.8 - 29 Sep 2015
 
 Update a bunch of dependencies to latest versions.

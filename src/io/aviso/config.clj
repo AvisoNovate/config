@@ -21,7 +21,8 @@
             [clojure.string :as str]
             [io.aviso.tracker :as t]
             [io.aviso.toolchest.macros :refer [cond-let]]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [medley.core :as medley]))
 
 (defn- resources
   "For a given resource name on the classpath, provides URLs for all the resources that match, in
@@ -203,6 +204,15 @@
   :profiles
   : A seq of keywords that identify which profiles should be loaded and in what order.
 
+  :properties
+  : An optional map of properties that may be substituted, just as environment
+    variable can be. Properties have higher precendence than environment
+    variables; however the convention is that environment variable names
+    are all upper case, and properties are all lower case, so actual conflicts
+    should not occur.
+  : The keys of the properties map are converted to strings via `name`, so they
+    may be symbols or, more frequently, keywords.
+
   :resource-path
   : A function that builds resource paths from prefix, profile, and extension.
 
@@ -215,11 +225,15 @@
   Any additional files will then be loaded.
 
   The contents of each file are deep-merged together; later files override earlier files."
-  [{:keys [prefix schemas overrides profiles resource-path extensions additional-files args]
+  [{:keys [prefix schemas overrides profiles
+           resource-path extensions additional-files
+           args properties]
     :or   {extensions    default-extensions
            resource-path default-resource-path}}]
   (assert prefix ":prefix option not specified")
-  (let [env-map       (into {} (System/getenv))
+  (let [env-map (-> {}
+                    (into (System/getenv))
+                    (into (medley/map-keys name properties)))
         [arg-files arg-overrides] (parse-args args)
         raw           (for [profile (concat [:default] profiles [:local nil])
                             [extension parser] extensions

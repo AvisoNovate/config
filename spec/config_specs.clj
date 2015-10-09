@@ -15,6 +15,8 @@
 
 (describe "io.aviso.config"
 
+  (with-all home (System/getenv "HOME"))
+
   (context "merge-value"
 
     (it "throws exception when the argument can't be parsed"
@@ -85,18 +87,26 @@
 
       (->> (assemble-configuration {:prefix  "env"
                                     :schemas [Env]})
-           (should= {:home (System/getenv "HOME")})))
+           (should= {:home @home})))
 
   (it "expands environment variables on edn files"
       (->> (assemble-configuration {:prefix "envedn"
                                     :schemas [Env]})
-           (should= {:home (System/getenv "HOME")})))
+           (should= {:home @home})))
 
   (it "can use a default value on an environment variable"
       (->> (assemble-configuration {:prefix "envdef"
                                     :schemas [{s/Any s/Any}]})
            (should= {:use-default "default-plugh"
-                     :use-env     (System/getenv "HOME")})))
+                     :use-env     @home})))
+
+  (it "can expand non-environment variable properties"
+      (->> (assemble-configuration {:prefix     "vars"
+                                    :properties {:special "an-option"}
+                                    :schemas    [{s/Any s/Any}]})
+           (should= {:unmatched "ok"
+                     :special   "an-option"
+                     :home      @home})))
 
   (it "can associate and extract schemas"
       (->> [(with-config-schema {} WebServer)
