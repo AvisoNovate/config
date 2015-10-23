@@ -108,9 +108,16 @@
                      :special   "an-option"
                      :home      @home})))
 
+  (it "can expand JVM system properties"
+      (->> (assemble-configuration {:prefix  "sysprops"
+                                    :schemas [{s/Any s/Any}]})
+           (should= {:user-home (System/getProperty "user.home")})))
+
   (it "can associate and extract schemas"
       (->> [(with-config-schema {} WebServer)
             {}
             (with-config-schema {} Database)]
            extract-schemas
            (should= [WebServer Database]))))
+
+(run-specs)

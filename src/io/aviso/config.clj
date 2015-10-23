@@ -206,12 +206,16 @@
 
   :properties
   : An optional map of properties that may be substituted, just as environment
-    variable can be. Properties have higher precendence than environment
+    variable or System property can be. Explicit properties  have higher precendence than JVM
+    system properties, which have higher precendence than environment
     variables; however the convention is that environment variable names
     are all upper case, and properties are all lower case, so actual conflicts
     should not occur.
   : The keys of the properties map are converted to strings via `name`, so they
-    may be symbols or, more frequently, keywords.
+    may be strings or symbols, or more frequently, keywords.
+  : Most often the properties map is used for specific overrides in testing, or
+    to expose some bit of configuration that cannot be directly extracted
+    from environment variables or JVM system properties.
 
   :resource-path
   : A function that builds resource paths from prefix, profile, and extension.
@@ -233,6 +237,7 @@
   (assert prefix ":prefix option not specified")
   (let [env-map (-> {}
                     (into (System/getenv))
+                    (into (System/getProperties))
                     (into (medley/map-keys name properties)))
         [arg-files arg-overrides] (parse-args args)
         raw           (for [profile (concat [:default] profiles [:local nil])

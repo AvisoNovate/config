@@ -3,6 +3,9 @@
 New :properties option, which specifies properties that can be substituted using
 the same syntax as environment variable substitution.
 
+JVM system properties may now be expanded in source files, using the same
+syntax as environment variables.
+
 ## 0.1.8 - 29 Sep 2015
 
 Update a bunch of dependencies to latest versions.
