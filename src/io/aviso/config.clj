@@ -5,7 +5,7 @@
 
       <prefix>-<profile>-configuration.<extension>
 
-  The <prefix> is specific to the application; the profile is provided by the application.
+  The prefix is specific to the application; the profile is provided by the application.
 
   Currently, the extensions \"yaml\" and \"edn\" are supported.
 
