@@ -3,9 +3,9 @@
 
   Configuration data is in the form of a *set* of files (mostly on the classpath) that follow a naming convention:
 
-      <prefix>-<profile>-configuration.<extension>
+      <prefix>-<profile>-<variant>-configuration.<extension>
 
-  The prefix is specific to the application; the profile is provided by the application.
+  The prefix is specific to the application; the list of profiles and variants is provided by the application.
 
   Currently, the extensions \"yaml\" and \"edn\" are supported.
 
@@ -46,8 +46,9 @@
                  (let [[env-var default-value] (split-env-ref env-var-reference)]
                    (or (get env-map env-var default-value)
                        (throw (ex-info (format "Unable to find expansion for `%s'." expansion)
-                                       {:env-var env-var
-                                        :source  source})))))))
+                                       {:env-var      env-var
+                                        :env-map-keys (keys env-map)
+                                        :source       source})))))))
 
 (defn- read-single
   "Reads a single configuration file from a URL, expanding environment variables, and
@@ -84,7 +85,7 @@
    "edn"  edn/read-string})
 
 (defn default-resource-path
-  "Default mapping of a resource path from prefix, profile, and extension.
+  "Default mapping of a resource path from prefix, profile, variant, and extension.
 
   prefix - string
   : prefix applied to all resource paths
@@ -92,17 +93,42 @@
   profile - keyword
   : profile to add to path, or nil
 
-  extension - string
-  : extension (e.g., \"yaml\").
+  variant - keyword
+  : variant to add to the path, or nil
 
-  The result is a either \"prefix-profile-configuration.ext\" or \"prefix-configuration.ext\" when profile
-  is nil."
-  [prefix profile extension]
-  (str prefix "-"
-       (if profile
-         (str (name profile) "-"))
-       "configuration."
+  extension - string
+  : extension (e.g., \"yaml\")
+
+  The result is typically \"prefix-profile-variant-configuration.ext\".
+
+  However, \"-variant\" is omitted when variant is nil, and \"-profile\"
+  is omitted when profile is nil."
+  [prefix profile variant extension]
+  (str (->> [prefix profile variant "configuration"]
+            (remove nil?)
+            (map name)
+            (str/join "-"))
+       "."
        extension))
+
+(def ^{:added "0.1.9"} default-variants
+  "The default list of variants. To combination of profile and variant is the main way
+  that resource file names are created (combined with a fixed prefix and a supported
+  extension).
+
+  The order is important: `'[:default nil :local]`.
+
+  Typically, a library creates a component or other entity that is represented within
+  config as a profile.
+
+  The library provides the :default configuration variant.
+
+  The consumer of the library provides the nil configuration variant.
+
+  The local variant may be used for test-specific overrides, or overrides for a user's
+  development (say, to redirect a database connection to a local database), or
+  used in production. "
+  [:default nil :local])
 
 (defn- get-parser [^String path extensions]
   (let [dotx      (.lastIndexOf path ".")
@@ -164,15 +190,20 @@
 (defn assemble-configuration
   "Reads the configuration, as specified by the options.
 
-  Inside each configuration file, the content is scanned for environment variables; these are substituted
-  from environment. Such substitution occurs before any parsing takes place.
+  Inside each configuration file, the content is scanned for property expansions.
 
-  Environment variables are of the form `${ENV_VAR}` and are simply replaced (with no special quoting) in
-  the string.
-  Environment variables with no default must exist, or an exception is thrown.
+  Expansions allow environment variables, JVM system properties, or explicitly specific properties
+  to be substituted into the content of a configuration file, *before* it is parsed.
 
-  A default value for an environment variable may be specified after a colon; example:  `${HOST:localhost}`
-  will be the value of environmant variable `HOST`, OR `localhost` if not defined.
+  Expansions take two forms:
+
+  * `${ENV_VAR}`
+  * `${ENV_VAR:default-value}`
+
+  In the former case, a non-nil value for the indicated property or environment variable
+  must be available, or an exception is thrown.
+
+  In the later case, a nil value will be replaced with the indicated default value.  e.g. `${HOST:localhost}`.
 
   The :args option is passed command line arguments (as from a -main function). The arguments
   are used to add further additional files to load, and provide additional overrides.
@@ -203,10 +234,11 @@
 
   :profiles
   : A seq of keywords that identify which profiles should be loaded and in what order.
+    The provided profiles are suffixed with a nil profile. The default is an empty list.
 
   :properties
   : An optional map of properties that may be substituted, just as environment
-    variable or System property can be. Explicit properties  have higher precendence than JVM
+    variable or System properties can be. Explicit properties have higher precendence than JVM
     system properties, which have higher precendence than environment
     variables; however the convention is that environment variable names
     are all upper case, and properties are all lower case, so actual conflicts
@@ -217,32 +249,40 @@
     to expose some bit of configuration that cannot be directly extracted
     from environment variables or JVM system properties.
 
+  :variants
+  : The variants searched for, for each profile.
+  : [[default-variants]] provides the default list of variants.
+
   :resource-path
   : A function that builds resource paths from prefix, profile, and extension.
+  : The default is [[default-resource-path]], but this could be overridden
+    to (for example), use a directory structure to organize configuration files
+    rather than splitting up the different components of the name using dashes.
 
   :extensions
   : Maps from extension (e.g., \"yaml\") to an appropriate parsing function.
 
-  The profile :default is always loaded first.
-  The profile :local is second to last (it usually contains local user overrides for testing).
   The nil profile is always loaded last.
   Any additional files will then be loaded.
 
   The contents of each file are deep-merged together; later files override earlier files."
-  [{:keys [prefix schemas overrides profiles
+  [{:keys [prefix schemas overrides profiles variants
            resource-path extensions additional-files
            args properties]
     :or   {extensions    default-extensions
+           variants      default-variants
+           profiles      []
            resource-path default-resource-path}}]
   (assert prefix ":prefix option not specified")
-  (let [env-map (-> {}
+  (let [env-map (-> (sorted-map)
                     (into (System/getenv))
                     (into (System/getProperties))
                     (into (medley/map-keys name properties)))
         [arg-files arg-overrides] (parse-args args)
-        raw           (for [profile (concat [:default] profiles [:local nil])
+        raw (for [profile (concat profiles [nil])
+                  variant variants
                             [extension parser] extensions
-                            :let [path (resource-path prefix profile extension)]]
+                  :let [path (resource-path prefix profile variant extension)]]
                         (read-each path parser env-map))
         flattened     (apply concat raw)
         extras        (for [path (concat additional-files arg-files)
@@ -270,7 +310,20 @@
   (vary-meta component assoc ::schema schema))
 
 (defn extract-schemas
-  "For a seq of components, extracts the schemas associated via [[with-config-schema]], returning
-  a seq of schemas."
+  "For a seq of components (the values of a system map),
+   extracts the schemas associated via [[with-config-schema]], returning a seq of schemas."
   [components]
   (keep (comp ::schema meta) components))
+
+(defn extend-system-map
+  "Uses the system map and options to read the configuration, using [[assemble-configuration]].
+  Returns the system map with one extra component, the configuration
+  itself (ready to be injected into the other components)."
+  {:added "0.1.9"}
+  ([system-map options]
+   (extend-system-map system-map :configuration options))
+  ([system-map configuration-key options]
+   (let [schemas (-> system-map vals extract-schemas)
+         configuration (t/track "Reading configuration."
+                                (assemble-configuration (assoc options :schemas schemas)))]
+     (assoc system-map configuration-key configuration))))

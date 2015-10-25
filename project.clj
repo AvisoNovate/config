@@ -4,15 +4,16 @@
             :license {:name "Apache Sofware License 2.0"
                       :url  "http://www.apache.org/licenses/LICENSE-2.0.html"}
             :profiles {:dev
-                       {:dependencies [[io.aviso/pretty "0.1.19"]
-                                       [speclj "3.3.1"]
+                       {:dependencies [[speclj "3.3.1"]
                                        [ch.qos.logback/logback-classic "1.1.3"]
                                        [criterium "0.4.3"]]}}
             ;; List "resolved" dependencies first, which occur when there are conflicts.
             ;; We pin down the version we want, then exclude anyone who disagrees.
             :dependencies [[org.clojure/clojure "1.7.0"]
+                           [io.aviso/pretty "0.1.19"]
                            [io.aviso/tracker "0.1.7"]
                            [prismatic/schema "1.0.1"]
+                           [com.stuartsierra/component "0.3.0"]
                            [medley "0.7.0"]
                            [clj-yaml "0.4.0"]]
             :plugins [[speclj "3.3.1"]

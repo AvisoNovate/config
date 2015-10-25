@@ -6,6 +6,28 @@ the same syntax as environment variable substitution.
 JVM system properties may now be expanded in source files, using the same
 syntax as environment variables.
 
+Incompatible changes:
+
+* The `default-resource-path` function (the default for
+  the :resource-path option) has changed to accept an additional
+  parameter, variant.
+* The :default profile is no longer added to the front of the list of profiles,
+  as was done previously.
+* For each profile, a set of variants (based on the :variant option) is now loaded.
+
+The above changes are meant to break apart large configuration files into
+a set of per-profile configuration files. Projects might previously have had
+a single `myapp-default-configuration.yaml` file with configuration data
+for a number of individual components; this tended to be brittle when only
+a subset of the components might actually be enabled (the excess data
+for non-enabled components could result in a schema validation exception).
+
+Instead, each component should provide a schema and a :default variant
+configuration file, e.g., `myapp-webserver-default-configuration.yaml`.
+
+Config now includes component as a dependency, and includes a new function,
+`extend-system-map` as an easy integration point.
+
 ## 0.1.8 - 29 Sep 2015
 
 Update a bunch of dependencies to latest versions.

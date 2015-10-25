@@ -41,6 +41,58 @@ Meanwhile, in production (on AWS) we can build a smaller system with a single mi
 We can also provide an additional configuration file that enables configuration overrides based on environment variables
 set by CloudFormation.
 
+When used with component, each component will have a keyword that will be used as a top-level key
+in the merged configuration, and as a configuration profile.
+
+For example, you might define a web service as:
+
+[source,clojure]
+----
+(defrecord WebService [configuration request-handler jetty-instance]
+
+  component/Lifecycle
+
+  (start [this]
+    (assoc :jetty-instance (jetty/run-jetty
+                              request-handler
+                              {:port (get-in configuration [:web-service :port]
+                               :join? false})))
+
+  (stop [this]
+    (.stop jetty-instance)
+    this))
+
+(s/defschema WebServiceConfig
+  {:web-service {:port s/Int}})
+
+(defn new-web-service
+  []
+  (-> (map->WebService {})
+      (component/using [:configuration :request-handler])
+      (config/with-config-schema WebServiceConfig)))
+----
+
+You would also provide default configuration file, `myapp-web-service-default-configuration.yaml`:
+
+[source,clojure]
+----
+web-service:
+  port: 8080
+----
+
+And finally, build and start a system from all this:
+
+[source,clojure]
+----
+(-> (component/system-map
+      :web-server (new-web-server)
+      :request-handler (new-request-handler))
+    (config/extend-system-map {:prefix "myapp"})
+    component/start-system)
+----
+
+
+
 Config is easily extensible to override how configuration files are named, and to support new formats
 of configuration files (by adding new extensions and parsers).
 
