@@ -87,7 +87,8 @@ And finally, build and start a system from all this:
 (-> (component/system-map
       :web-server (new-web-server)
       :request-handler (new-request-handler))
-    (config/extend-system-map {:prefix "myapp"})
+    (config/extend-system-map {:prefix "myapp"
+                               :profiles [:web-server]})
     component/start-system)
 ----
 
