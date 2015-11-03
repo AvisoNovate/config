@@ -55,7 +55,7 @@ For example, you might define a web service as:
   (start [this]
     (assoc :jetty-instance (jetty/run-jetty
                               request-handler
-                              {:port (get-in configuration [:web-service :port]
+                              {:port (get-in configuration [:web-service :port])
                                :join? false})))
 
   (stop [this]
