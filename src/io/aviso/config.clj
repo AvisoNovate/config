@@ -112,7 +112,7 @@
        extension))
 
 (def ^{:added "0.1.9"} default-variants
-  "The default list of variants. To combination of profile and variant is the main way
+  "The default list of variants. The combination of profile and variant is the main way
   that resource file names are created (combined with a fixed prefix and a supported
   extension).
 
