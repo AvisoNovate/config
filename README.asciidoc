@@ -72,7 +72,7 @@ For example, you might define a web service as:
       (config/with-config-schema WebServiceConfig)))
 ----
 
-You would also provide default configuration file, `myapp-web-service-default-configuration.yaml`:
+You would also provide a default configuration file, `web-service-configuration.yaml`:
 
 [source,clojure]
 ----
@@ -85,14 +85,26 @@ And finally, build and start a system from all this:
 [source,clojure]
 ----
 (-> (component/system-map
-      :web-server (new-web-server)
+      :web-service (new-web-service)
       :request-handler (new-request-handler))
-    (config/extend-system-map {:prefix "myapp"
-                               :profiles [:web-server]})
+    (config/extend-system-map {:profiles [:web-service]})
     component/start-system)
 ----
 
+But what if you want to override part of the :web-service configuration?
 
+This can be accomplished in a number of ways:
+
+- By supplying a `configuration.yaml` file (this corresponds to the nil profile,
+  which is loaded last).
+- By supplying a `web-service-local-configuration.yaml` file (because the :local
+  variant is loaded *after* the default variant).
+- By providing direct overrides to the configuration using the :overrides option
+  key.
+- By supplying an `override-configuration.yaml' file, and setting the
+  :profile option key to [:web-service :override].
+- By supplying additional files (on the file system, not the classpath)
+  to load using the :additional-files option key.
 
 Config is easily extensible to override how configuration files are named, and to support new formats
 of configuration files (by adding new extensions and parsers).

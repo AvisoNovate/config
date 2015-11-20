@@ -6,11 +6,13 @@ the same syntax as environment variable substitution.
 JVM system properties may now be expanded in source files, using the same
 syntax as environment variables.
 
+The :prefix option is now allowed to be nil.
+
 Incompatible changes:
 
 * The `default-resource-path` function (the default for
-  the :resource-path option) has changed to accept an additional
-  parameter, variant.
+  the :resource-path option) has changed to accept a single map rather
+  than four individual parameters.
 * The :default profile is no longer added to the front of the list of profiles,
   as was done previously.
 * For each profile, a set of variants (based on the :variant option) is now loaded.
@@ -22,8 +24,8 @@ for a number of individual components; this tended to be brittle when only
 a subset of the components might actually be enabled (the excess data
 for non-enabled components could result in a schema validation exception).
 
-Instead, each component should provide a schema and a :default variant
-configuration file, e.g., `myapp-webserver-default-configuration.yaml`.
+Instead, each component should provide a schema a default
+configuration file, e.g., `myapp-webserver-configuration.yaml`.
 
 Config now includes component as a dependency, and includes a new function,
 `extend-system-map` as an easy integration point.

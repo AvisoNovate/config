@@ -86,24 +86,25 @@
 
 (defn default-resource-path
   "Default mapping of a resource path from prefix, profile, variant, and extension.
+  A single map is passed, with the following keys:
 
-  prefix - string
+  :prefix - string, or nil
   : prefix applied to all resource paths
 
-  profile - keyword
+  :profile - keyword
   : profile to add to path, or nil
 
-  variant - keyword
+  :variant - keyword
   : variant to add to the path, or nil
 
-  extension - string
+  :extension - string
   : extension (e.g., \"yaml\")
 
   The result is typically \"prefix-profile-variant-configuration.ext\".
 
   However, \"-variant\" is omitted when variant is nil, and \"-profile\"
   is omitted when profile is nil."
-  [prefix profile variant extension]
+  [{:keys [prefix profile variant extension]}]
   (str (->> [prefix profile variant "configuration"]
             (remove nil?)
             (map name)
@@ -116,19 +117,17 @@
   that resource file names are created (combined with a fixed prefix and a supported
   extension).
 
-  The order is important: `'[:default nil :local]`.
+  The order is important: `'[nil :local]`.
 
   Typically, a library creates a component or other entity that is represented within
   config as a profile.
 
-  The library provides the :default configuration variant.
-
-  The consumer of the library provides the nil configuration variant.
+  The library provides the nil configuration variant, which forms the defaults.
 
   The local variant may be used for test-specific overrides, or overrides for a user's
-  development (say, to redirect a database connection to a local database), or
-  used in production. "
-  [:default nil :local])
+  development (say, to redirect a database connection to a local database), or even
+  used in production."
+  [nil :local])
 
 (defn- get-parser [^String path extensions]
   (let [dotx      (.lastIndexOf path ".")
@@ -273,16 +272,18 @@
            variants      default-variants
            profiles      []
            resource-path default-resource-path}}]
-  (assert prefix ":prefix option not specified")
-  (let [env-map (-> (sorted-map)
-                    (into (System/getenv))
-                    (into (System/getProperties))
-                    (into (medley/map-keys name properties)))
+  (let [env-map       (-> (sorted-map)
+                          (into (System/getenv))
+                          (into (System/getProperties))
+                          (into (medley/map-keys name properties)))
         [arg-files arg-overrides] (parse-args args)
-        raw (for [profile (concat profiles [nil])
-                  variant variants
+        raw           (for [profile (concat profiles [nil])
+                            variant variants
                             [extension parser] extensions
-                  :let [path (resource-path prefix profile variant extension)]]
+                            :let [path (resource-path {:prefix    prefix
+                                                       :profile   profile
+                                                       :variant   variant
+                                                       :extension extension})]]
                         (read-each path parser env-map))
         flattened     (apply concat raw)
         extras        (for [path (concat additional-files arg-files)
@@ -323,7 +324,7 @@
   ([system-map options]
    (extend-system-map system-map :configuration options))
   ([system-map configuration-key options]
-   (let [schemas (-> system-map vals extract-schemas)
+   (let [schemas       (-> system-map vals extract-schemas)
          configuration (t/track "Reading configuration."
                                 (assemble-configuration (assoc options :schemas schemas)))]
      (assoc system-map configuration-key configuration))))
