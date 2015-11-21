@@ -85,8 +85,8 @@ it needs.
 == Providing Configuration Files
 
 Without configuration files, your application will not start up; you will see
-errors about invalid schemas, because there is (for example)
-not :web-service top-level key, and no :port key below that.
+errors about invalid schemas, because there is (in this example)
+no :web-service top-level key, and no :port key below that.
 
 Configuration files are on the class path; this means directly underneath
 the `resources` folder in a typical project.
@@ -132,9 +132,9 @@ This can be accomplished in a number of ways:
   variant is loaded *after* the default variant).
 - By providing direct overrides to the configuration using the :overrides option
   key.
-- By supplying an `override-configuration.yaml' file, and setting the
+- By supplying an `override-configuration.yaml` file, and setting the
   :profile option key to [:web-service :override].
-- By supplying additional files (on the file system, not the classpath)
+- By specifying additional files (on the file system, not the classpath)
   to load using the :additional-files option key.
 
 Config is easily extensible to override how configuration files are named, and to support new formats
@@ -180,7 +180,7 @@ There's a number of changes:
 - Instead of a dependency on the configuration service, there is an additional
   field for the port provided in the configuration.
 - WebServiceConfig is *just* the configuration of the service
-- `with-config-schema` provides an additional key, the top-level key
+- `with-config-schema` provides an additional argument, the top-level key
 - The `configure` method gets just the configuration for :web-service; the
   map with the :port key.
 - The `start` method is invoked *after* the `configure` method, so the port
