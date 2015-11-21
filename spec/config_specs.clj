@@ -14,6 +14,13 @@
 
 (s/defschema Env {:home s/Str})
 
+(defrecord Capturing [captured]
+
+  Configurable
+
+  (configure [this configuration]
+    (assoc this :captured configuration)))
+
 (defrecord WebServer [configuration port pool-size]
 
   component/Lifecycle
@@ -144,6 +151,22 @@
                                        :profiles [:web-server]})
                    component/start-system
                    :web-server
-                   :port))))
+                   :port)))
+
+  (context "configure-components"
+    (it "can associate configuration for a plain map component"
+      (let [component-configuration {:foo :bar}
+            component               (with-config-schema {:name :this-component} :this-component s/Any)
+            system-map              (component/system-map :this-component component)
+            configured-system       (configure-components system-map {:this-component component-configuration})]
+        (should-be-same component-configuration (-> configured-system :this-component :configuration))))
+
+    (it "can invoke Configurable/configure if implemented"
+      (let [component-configuration {:foo :bar}
+            component               (with-config-schema (map->Capturing {})
+                                                        :that-component s/Any)
+            system-map              (component/system-map :that-component component)
+            configured-system       (configure-components system-map {:that-component component-configuration})]
+        (should-be-same component-configuration (-> configured-system :that-component :captured))))))
 
 (run-specs)

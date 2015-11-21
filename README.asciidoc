@@ -1,4 +1,4 @@
-== Config - Smart and flexible system configuration
+= Config - Smart and flexible system configuration
 
 image:http://clojars.org/io.aviso/config/latest-version.svg[Clojars Project, link="http://clojars.org/io.aviso/config"]
 
@@ -8,6 +8,10 @@ link:https://github.com/stuartsierra/component[Stuart Sierra's component library
 
 link:https://medium.com/@hlship/microservices-configuration-and-clojure-4f6807ef9bea[This posting] provides
 a lot of detail on the requirements and capabilities of config.
+
+link:http://howardlewisship.com/io.aviso/config/[API Documentation]
+
+== Overview
 
 Config reads a series of files, primarily from the classpath.
 The files contain contain configuration data, in either
@@ -44,6 +48,8 @@ set by CloudFormation.
 When used with component, each component will have a keyword that will be used as a top-level key
 in the merged configuration, and as a configuration profile.
 
+== Implementing Components
+
 For example, you might define a web service as:
 
 [source,clojure]
@@ -72,13 +78,29 @@ For example, you might define a web service as:
       (config/with-config-schema WebServiceConfig)))
 ----
 
-You would also provide a default configuration file, `web-service-configuration.yaml`:
+Notice that the component receives the *entire* configuration in its
+:configuration key (as a dependency). It can then extract the value(s)
+it needs.
+
+== Providing Configuration Files
+
+Without configuration files, your application will not start up; you will see
+errors about invalid schemas, because there is (for example)
+not :web-service top-level key, and no :port key below that.
+
+Configuration files are on the class path; this means directly underneath
+the `resources` folder in a typical project.
+
+For the :web-service component, you would
+provide a default configuration file, `web-service-configuration.yaml`:
 
 [source,clojure]
 ----
 web-service:
   port: 8080
 ----
+
+== Starting the System
 
 And finally, build and start a system from all this:
 
@@ -91,7 +113,16 @@ And finally, build and start a system from all this:
     component/start-system)
 ----
 
-But what if you want to override part of the :web-service configuration?
+The `extend-system-map` function reads the configuration files and associates
+a new key, :configuration, into the system map, containing all the configuration
+data.
+This configuration data is then available to the components, as injected
+dependencies (as outlined in the code sample above).
+
+== Overrides
+
+But what if you want to override part of the :web-service configuration ...
+for example, to specify a different port?
 
 This can be accomplished in a number of ways:
 
@@ -109,6 +140,74 @@ This can be accomplished in a number of ways:
 Config is easily extensible to override how configuration files are named, and to support new formats
 of configuration files (by adding new extensions and parsers).
 
-Config is available under the terms of the Apache Software License 2.0.
+== Focused Configuration
 
-link:http://howardlewisship.com/io.aviso/config/[API Documentation]
+Starting in 0.1.9, it is possible to receive configuration specific to the
+component.
+
+[source,clojure]
+----
+(defrecord WebService [port request-handler jetty-instance]
+
+  Configurable
+  (configure [this configuration]
+    (merge this configuration))
+
+  component/Lifecycle
+
+  (start [this]
+    (assoc :jetty-instance (jetty/run-jetty
+                              request-handler
+                              {:port port
+                               :join? false})))
+
+  (stop [this]
+    (.stop jetty-instance)
+    this))
+
+(s/defschema WebServiceConfig
+  {:port s/Int})
+
+(defn new-web-service
+  []
+  (-> (map->WebService {})
+      (component/using [:request-handler])
+      (config/with-config-schema :web-service WebServiceConfig)))
+----
+
+There's a number of changes:
+
+- Instead of a dependency on the configuration service, there is an additional
+  field for the port provided in the configuration.
+- WebServiceConfig is *just* the configuration of the service
+- `with-config-schema` provides an additional key, the top-level key
+- The `configure` method gets just the configuration for :web-service; the
+  map with the :port key.
+- The `start` method is invoked *after* the `configure` method, so the port
+  field is initialized.
+
+The startup code is slightly changed as well:
+
+[source,clojure]
+----
+(-> (component/system-map
+      :web-service (new-web-service)
+      :request-handler (new-request-handler))
+    (config/extend-system-map {:profiles [:web-service]})
+    configure-components
+    component/start-system)
+----
+
+The call to `configure-components` is the difference.
+
+If a component does not extend the Configurable protocol, it will
+instead have a :component key assoc'ed with the component's individual
+configuration map.
+
+It is necessary to invoke the three-argument version of `with-config-schema`
+to trigger this; otherwise `configure-components` does not know what key
+in the merged configuration map to extract for the component.
+
+'''
+
+Config is available under the terms of the Apache Software License 2.0.

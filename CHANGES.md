@@ -8,6 +8,12 @@ syntax as environment variables.
 
 The :prefix option is now allowed to be nil.
 
+Config now includes component as a dependency, and includes a new function,
+`extend-system-map` as an easy integration point. 
+
+A new option for components to receive *just* their individual configuration
+has been added: the Configurable protocol and the `configure-components` function.
+
 Incompatible changes:
 
 * The `default-resource-path` function (the default for
@@ -24,11 +30,8 @@ for a number of individual components; this tended to be brittle when only
 a subset of the components might actually be enabled (the excess data
 for non-enabled components could result in a schema validation exception).
 
-Instead, each component should provide a schema a default
+Instead, each component should provide a schema and default
 configuration file, e.g., `myapp-webserver-configuration.yaml`.
-
-Config now includes component as a dependency, and includes a new function,
-`extend-system-map` as an easy integration point.
 
 ## 0.1.8 - 29 Sep 2015
 

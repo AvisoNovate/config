@@ -22,7 +22,8 @@
             [io.aviso.tracker :as t]
             [io.aviso.toolchest.macros :refer [cond-let]]
             [clojure.java.io :as io]
-            [medley.core :as medley]))
+            [medley.core :as medley]
+            [com.stuartsierra.component :as component]))
 
 (defn- resources
   "For a given resource name on the classpath, provides URLs for all the resources that match, in
@@ -305,10 +306,39 @@
                        :failure (su/error-val config)}))
       config)))
 
+(defprotocol Configurable
+  (configure [this configuration]
+    "Passes a component's individual configuration to the component,
+    as defined by the three-argument varsion of [[with-config-schema]].
+
+    When this is invoked (see [[configure-components]],
+    a component's dependencies *will* be available, but in an un-started
+    state."))
+
 (defn with-config-schema
-  "Adds metadata to the component to define the configuration schema for the component."
-  [component schema]
-  (vary-meta component assoc ::schema schema))
+  "Adds metadata to the component to define the configuration schema for the component.
+
+  The two arguments version is the original version.
+  When using this approach, in concert with [[extend-system-map]], the
+  component should have a dependency on the configuration component
+  (typically, :configuration).  The configuration componment
+  will be the configuration map, created via [[assemble-configuration]].
+
+  The modern alternative is the three argument variant.
+  This defnes a top-level configuration key (e.g., :web-service)
+  and a schema for just that key.
+
+  The component will receive *just* that configuration in its
+  :configuration key.
+
+  Alternately,the component may implement the
+  [[Configurable]] protocol. It will be passed just its own configuration."
+  ([component schema]
+   (vary-meta component assoc ::schema schema))
+  ([component config-key schema]
+   (vary-meta component assoc ::config-key config-key
+              ;; This is what's merged to form the master schema
+              ::schema {config-key schema})))
 
 (defn extract-schemas
   "For a seq of components (the values of a system map),
@@ -328,3 +358,38 @@
          configuration (t/track "Reading configuration."
                                 (assemble-configuration (assoc options :schemas schemas)))]
      (assoc system-map configuration-key configuration))))
+
+(defn- apply-configuration
+  [component full-configuration]
+  (cond-let
+    [config-key (-> component meta ::config-key)]
+
+    (nil? config-key)
+    component
+
+    [component-configuration (get full-configuration config-key)]
+
+    (satisfies? Configurable component)
+    (configure component component-configuration)
+
+    :else
+    (assoc component :configuration component-configuration)))
+
+(defn configure-components
+  "Configures the compoments in the system map, returning an updated system map.
+
+  In the simple case, the configuration is expected to be in the :configuration
+  key of the system map (the default when using [[extend-system-map]].
+
+  In the two argument case, the component is supplied as the second parameter.
+
+  Typically, this should be invoked *before* the system is started, as most
+  components are expected to need configuration in order to start."
+  {:added "0.1.9"}
+  ([system-map]
+   (configure-components system-map (:configuration system-map)))
+  ([system-map configuration]
+   (component/update-system system-map
+                            (keys system-map)
+                            apply-configuration
+                            configuration)))
