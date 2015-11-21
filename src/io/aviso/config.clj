@@ -89,8 +89,8 @@
   "Default mapping of a resource path from prefix, profile, variant, and extension.
   A single map is passed, with the following keys:
 
-  :prefix - string, or nil
-  : prefix applied to all resource paths
+  :prefix - string
+  : prefix applied to all resource paths, or nil
 
   :profile - keyword
   : profile to add to path, or nil
@@ -104,11 +104,13 @@
   The result is typically \"prefix-profile-variant-configuration.ext\".
 
   However, \"-variant\" is omitted when variant is nil, and \"-profile\"
-  is omitted when profile is nil."
+  is omitted when profile is nil.
+
+  Since 0.1.9, prefix is optional and typically nil."
   [{:keys [prefix profile variant extension]}]
   (str (->> [prefix profile variant "configuration"]
             (remove nil?)
-            (map name)
+            (mapv name)
             (str/join "-"))
        "."
        extension))
@@ -118,7 +120,9 @@
   that resource file names are created (combined with a fixed prefix and a supported
   extension).
 
-  The order is important: `'[nil :local]`.
+  The order is important: `[nil :local]`. This means that the default file
+  (the nil variant) will be searched for and loaded first, and the `-local`
+  variant second.
 
   Typically, a library creates a component or other entity that is represented within
   config as a profile.
@@ -143,7 +147,8 @@
 
        path=value
 
-   where path is the path to value; it is split at slashes and the key converted to keywords.
+   where path is the path to value; it is split at slashes and the
+   individual strings converted to keywords.
 
    e.g.
 
@@ -309,7 +314,7 @@
 (defprotocol Configurable
   (configure [this configuration]
     "Passes a component's individual configuration to the component,
-    as defined by the three-argument varsion of [[with-config-schema]].
+    as defined by the three-argument version of [[with-config-schema]].
 
     When this is invoked (see [[configure-components]],
     a component's dependencies *will* be available, but in an un-started
