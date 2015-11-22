@@ -217,8 +217,10 @@
 
   In the second case, the path and value are as defined by [[merge-value]].
 
-  :prefix (required)
-  : The prefix to place at the start of each configuration file read.
+  :prefix
+  : The optional prefix to place at the start of each configuration file read.
+  : In older version of the library, the prefix was required, but it is now
+    optional.
 
   :schemas
   : A seq of schemas; these will be merged to form the full configuration schema.
@@ -271,14 +273,15 @@
   Any additional files will then be loaded.
 
   The contents of each file are deep-merged together; later files override earlier files."
-  [{:keys [prefix schemas overrides profiles variants
-           resource-path extensions additional-files
-           args properties]
-    :or   {extensions    default-extensions
-           variants      default-variants
-           profiles      []
-           resource-path default-resource-path}}]
-  (let [env-map       (-> (sorted-map)
+  [options]
+  (let [{:keys [prefix schemas overrides profiles variants
+                resource-path extensions additional-files
+                args properties]
+         :or   {extensions    default-extensions
+                variants      default-variants
+                profiles      []
+                resource-path default-resource-path}} options
+        env-map       (-> (sorted-map)
                           (into (System/getenv))
                           (into (System/getProperties))
                           (into (medley/map-keys name properties)))
