@@ -1,4 +1,4 @@
-## 0.1.9 - UNRELEASED
+## 0.1.9 - 22 Nov 2015
 
 New :properties option, which specifies properties that can be substituted using
 the same syntax as environment variable substitution.
