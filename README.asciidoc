@@ -150,6 +150,7 @@ component.
 (defrecord WebService [port request-handler jetty-instance]
 
   Configurable
+
   (configure [this configuration]
     (merge this configuration))
 
@@ -177,12 +178,12 @@ component.
 
 There's a number of changes:
 
-- Instead of a dependency on the configuration service, there is an additional
+- Instead of a dependency on the configuration component, there is an additional
   field for the port provided in the configuration.
-- WebServiceConfig is *just* the configuration of the service
+- WebServiceConfig is *just* the configuration of the :web-service component
 - `with-config-schema` provides an additional argument, the top-level key
-- The `configure` method gets just the configuration for :web-service; the
-  map with the :port key.
+- The `configure` method gets just the configuration for the :web-service
+  component; the map with the :port key.
 - The `start` method is invoked *after* the `configure` method, so the port
   field is initialized.
 
