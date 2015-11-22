@@ -25,7 +25,7 @@
             "release"    ["do"
                           "clean,"
                           "spec,",
-                          "doc,"
+                          "codox,"
                           "deploy-doc,"
                           "deploy" "clojars"]}
   :test-paths ["spec"]
