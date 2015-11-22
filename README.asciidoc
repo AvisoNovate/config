@@ -209,6 +209,6 @@ It is necessary to invoke the three-argument version of `with-config-schema`
 to trigger this; otherwise `configure-components` does not know what key
 in the merged configuration map to extract for the component.
 
-'''
+== License
 
 Config is available under the terms of the Apache Software License 2.0.
