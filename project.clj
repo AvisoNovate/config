@@ -1,4 +1,4 @@
-(defproject io.aviso/config "0.1.9"
+(defproject io.aviso/config "0.1.10"
   :description "Configure a system using YAML or EDN files"
   :url "https://github.com/AvisoNovate/config"
   :license {:name "Apache Sofware License 2.0"
@@ -17,16 +17,11 @@
                  [medley "0.7.0"]
                  [clj-yaml "0.4.0"]]
   :plugins [[speclj "3.3.1"]
-            [lein-shell "0.4.0"]
             [lein-codox "0.9.0"]]
-  :shell {:commands {"scp" {:dir "target/doc"}}}
-  :aliases {"deploy-doc" ["shell"
-                          "scp" "-r" "." "hlship_howardlewisship@ssh.phx.nearlyfreespeech.net:io.aviso/config"]
-            "release"    ["do"
+  :aliases {"release"    ["do"
                           "clean,"
                           "spec,",
                           "codox,"
-                          "deploy-doc,"
                           "deploy" "clojars"]}
   :test-paths ["spec"]
   :codox {:source-uri "https://github.com/AvisoNovate/confiig/blob/master/{filepath}#L{line}"

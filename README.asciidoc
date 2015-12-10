@@ -9,7 +9,7 @@ link:https://github.com/stuartsierra/component[Stuart Sierra's component library
 link:https://medium.com/@hlship/microservices-configuration-and-clojure-4f6807ef9bea[This posting] provides
 a lot of detail on the requirements and capabilities of config.
 
-link:http://howardlewisship.com/io.aviso/config/[API Documentation]
+link:http://avisonovate.github.io/docs/config/[API Documentation]
 
 == Overview
 
