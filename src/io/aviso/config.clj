@@ -220,17 +220,17 @@
              (merge-value overrides arg)))))
 
 (s/defschema ^{:added "0.1.10"} AssembleOptions
-  {
-   (s/optional-key :prefix) s/Str
-   (s/optional-key :schemas) [s/Any]
+  "Defines the options passed to [[assemble-configuration]]."
+  {(s/optional-key :prefix)           s/Str
+   (s/optional-key :schemas)          [s/Any]
    (s/optional-key :additional-files) [s/Str]
-   (s/optional-key :args) [s/Str]
-   (s/optional-key :overrides) s/Any
-   (s/optional-key :profiles) [s/Keyword]
-   (s/optional-key :properties) {s/Any s/Str}
-   (s/optional-key :variants) [(s/maybe s/Keyword)]
-   (s/optional-key :resource-path) ResourcePathGenerator
-   (s/optional-key :extensions) {s/Str ConfigParser}})
+   (s/optional-key :args)             [s/Str]
+   (s/optional-key :overrides)        s/Any
+   (s/optional-key :profiles)         [s/Keyword]
+   (s/optional-key :properties)       {s/Any s/Str}
+   (s/optional-key :variants)         [(s/maybe s/Keyword)]
+   (s/optional-key :resource-path)    ResourcePathGenerator
+   (s/optional-key :extensions)       {s/Str ConfigParser}})
 
 (s/defn assemble-configuration
   "Reads the configuration, as specified by the options.
