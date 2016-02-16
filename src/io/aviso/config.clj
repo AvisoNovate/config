@@ -89,7 +89,7 @@
   (s/=> s/Any s/Str))
 
 (def default-extensions
-  "The default mapping from file extension to a parser for content from such a file.
+  "The default mapping from file extension to a [[ConfigParser]] for content from such a file.
 
   Provides parsers for the \"yaml\" and \"edn\" extensions."
   {"yaml" #(yaml/parse-string % true)
