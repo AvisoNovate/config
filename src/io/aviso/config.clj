@@ -359,7 +359,7 @@
     "Passes a component's individual configuration to the component,
     as defined by the three-argument version of [[with-config-schema]].
 
-    When this is invoked (see [[configure-components]],
+    When this is invoked (see [[configure-components]]),
     a component's dependencies *will* be available, but in an un-started
     state."))
 
