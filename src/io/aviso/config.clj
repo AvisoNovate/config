@@ -23,7 +23,8 @@
             [io.aviso.toolchest.macros :refer [cond-let]]
             [clojure.java.io :as io]
             [medley.core :as medley]
-            [com.stuartsierra.component :as component]))
+            [com.stuartsierra.component :as component]
+            [schema.core :as s]))
 
 (defn- resources
   "For a given resource name on the classpath, provides URLs for all the resources that match, in
@@ -78,6 +79,15 @@
     (coll? existing) (concat existing new)
     :else new))
 
+(s/defschema ^{:added "0.1.10"}
+  ConfigParser
+  "A callback that is passed the content from a file and returns the parsed configuration.
+
+  Each extension is mapped to a corresponding ConfigParser.
+
+  [[default-extensions]] provides the default mappings."
+  (s/=> s/Any s/Str))
+
 (def default-extensions
   "The default mapping from file extension to a parser for content from such a file.
 
@@ -85,7 +95,21 @@
   {"yaml" #(yaml/parse-string % true)
    "edn"  edn/read-string})
 
-(defn default-resource-path
+(s/defschema ^{:added "0.1.10"} ResourcePathSelector
+  "Map of values passed to a [[ResourcePathGenerator]]."
+  {:prefix    (s/maybe s/Str)
+   :profile   (s/maybe s/Keyword)
+   :variable  (s/maybe s/Keyword)
+   :extension s/Str})
+
+(s/defschema ^{:added "0.1.10"} ResourcePathGenerator
+  "A callback that converts configuration file resource selector
+  into some number of resource path strings.
+
+  The standard implementation is [[default-resource-path]]."
+  (s/=> [String] ResourcePathSelector))
+
+(s/defn default-resource-path :- [String]
   "Default mapping of a resource path from prefix, profile, variant, and extension.
   A single map is passed, with the following keys:
 
@@ -109,13 +133,14 @@
   Since 0.1.9, prefix is optional and typically nil.
 
   Since 0.1.10, returns a seq of files."
-  [{:keys [prefix profile variant extension]}]
-  [(str (->> [prefix profile variant "configuration"]
-             (remove nil?)
-             (mapv name)
-             (str/join "-"))
-        "."
-        extension)])
+  [selector :- ResourcePathSelector]
+  (let [{:keys [prefix profile variant extension]} selector]
+    [(str (->> [prefix profile variant "configuration"]
+               (remove nil?)
+               (mapv name)
+               (str/join "-"))
+          "."
+          extension)]))
 
 (def ^{:added "0.1.9"} default-variants
   "The default list of variants. To combination of profile and variant is the main way
@@ -194,7 +219,20 @@
              additional-files
              (merge-value overrides arg)))))
 
-(defn assemble-configuration
+(s/defschema ^{:added "0.1.10"} AssembleOptions
+  {
+   (s/optional-key :prefix) s/Str
+   (s/optional-key :schemas) [s/Any]
+   (s/optional-key :additional-files) [s/Str]
+   (s/optional-key :args) [s/Str]
+   (s/optional-key :overrides) s/Any
+   (s/optional-key :profiles) [s/Keyword]
+   (s/optional-key :properties) {s/Any s/Str}
+   (s/optional-key :variants) [(s/maybe s/Keyword)]
+   (s/optional-key :resource-path) ResourcePathGenerator
+   (s/optional-key :extensions) {s/Str ConfigParser}})
+
+(s/defn assemble-configuration
   "Reads the configuration, as specified by the options.
 
   Inside each configuration file, the content is scanned for property expansions.
@@ -275,7 +313,7 @@
   Any additional files will then be loaded.
 
   The contents of each file are deep-merged together; later files override earlier files."
-  [options]
+  [options :- AssembleOptions]
   (let [{:keys [prefix schemas overrides profiles variants
                 resource-path extensions additional-files
                 args properties]
