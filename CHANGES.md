@@ -1,3 +1,8 @@
+## 0.1.10 - UNRELEASED
+
+The `default-resource-path` function (or its :resource-path override in the options)
+must now return a seq of paths.
+
 ## 0.1.9 - 22 Nov 2015
 
 New :properties option, which specifies properties that can be substituted using

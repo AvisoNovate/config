@@ -106,14 +106,16 @@
   However, \"-variant\" is omitted when variant is nil, and \"-profile\"
   is omitted when profile is nil.
 
-  Since 0.1.9, prefix is optional and typically nil."
+  Since 0.1.9, prefix is optional and typically nil.
+
+  Since 0.1.10, returns a seq of files."
   [{:keys [prefix profile variant extension]}]
-  (str (->> [prefix profile variant "configuration"]
-            (remove nil?)
-            (mapv name)
-            (str/join "-"))
-       "."
-       extension))
+  [(str (->> [prefix profile variant "configuration"]
+             (remove nil?)
+             (mapv name)
+             (str/join "-"))
+        "."
+        extension)])
 
 (def ^{:added "0.1.9"} default-variants
   "The default list of variants. To combination of profile and variant is the main way
@@ -289,10 +291,10 @@
         raw           (for [profile (concat profiles [nil])
                             variant variants
                             [extension parser] extensions
-                            :let [path (resource-path {:prefix    prefix
-                                                       :profile   profile
-                                                       :variant   variant
-                                                       :extension extension})]]
+                            path (resource-path {:prefix    prefix
+                                                 :profile   profile
+                                                 :variant   variant
+                                                 :extension extension})]
                         (read-each path parser env-map))
         flattened     (apply concat raw)
         extras        (for [path (concat additional-files arg-files)
