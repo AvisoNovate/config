@@ -71,16 +71,22 @@ For example, you might define a web service as:
 (s/defschema WebServiceConfig
   {:web-service {:port s/Int}})
 
-(defn new-web-service
+(defn web-service
   []
   (-> (map->WebService {})
       (component/using [:configuration :request-handler])
       (config/with-config-schema WebServiceConfig)))
 ----
 
-Notice that the component receives the *entire* configuration in its
+This component has a dependency on the :configuration component; in reality
+the configuration component is just the final map of configuration data.
+
+It has dependency on the :request-handler component, and a local slot for the
+Jetty server instance this component manages.
+
+Notice that the component receives the *entire* system's configuration in its
 :configuration key (as a dependency). It can then extract the value(s)
-it needs.
+it needs (a better approach is provided below).
 
 == Providing Configuration Files
 
@@ -107,8 +113,8 @@ And finally, build and start a system from all this:
 [source,clojure]
 ----
 (-> (component/system-map
-      :web-service (new-web-service)
-      :request-handler (new-request-handler))
+      :web-service (web-service)
+      :request-handler (request-handler))
     (config/extend-system-map {:profiles [:web-service]})
     component/start-system)
 ----
@@ -116,8 +122,18 @@ And finally, build and start a system from all this:
 The `extend-system-map` function reads the configuration files and associates
 a new key, :configuration, into the system map, containing all the configuration
 data.
+
 This configuration data is then available to the components, as injected
 dependencies (as outlined in the code sample above).
+
+Notice the specification of the :web-service profile; this controls exactly which
+configuration files will be loaded, merged, and validated.
+
+The :web-service key is being used in three ways here:
+
+* As the component key in the system map
+* As the name of the profile for the component, identifying the configuration file(s) for the compoment
+* As the key within the system configuration containing the component's specific configuration
 
 == Overrides
 
@@ -127,7 +143,7 @@ for example, to specify a different port?
 This can be accomplished in a number of ways:
 
 - By supplying a `configuration.yaml` file (this corresponds to the nil profile,
-  which is loaded last).
+  which is always loaded last).
 - By supplying a `web-service-local-configuration.yaml` file (because the :local
   variant is loaded *after* the default variant).
 - By providing direct overrides to the configuration using the :overrides option
@@ -149,7 +165,7 @@ component.
 ----
 (defrecord WebService [port request-handler jetty-instance]
 
-  Configurable
+  config/Configurable
 
   (configure [this configuration]
     (merge this configuration))
@@ -169,7 +185,7 @@ component.
 (s/defschema WebServiceConfig
   {:port s/Int})
 
-(defn new-web-service
+(defn web-service
   []
   (-> (map->WebService {})
       (component/using [:request-handler])
@@ -187,15 +203,18 @@ There's a number of changes:
 - The `start` method is invoked *after* the `configure` method, so the port
   field is initialized.
 
+Again, it typically makes sense for the component key, the profile name, and the configuration key
+for the component to all match; in this case, the value :web-service.
+
 The startup code is slightly changed as well:
 
 [source,clojure]
 ----
 (-> (component/system-map
-      :web-service (new-web-service)
-      :request-handler (new-request-handler))
+      :web-service (web-service)
+      :request-handler (request-handler))
     (config/extend-system-map {:profiles [:web-service]})
-    configure-components
+    config/configure-components
     component/start-system)
 ----
 
@@ -203,10 +222,10 @@ The call to `configure-components` is the difference.
 
 If a component does not extend the Configurable protocol, it will
 instead have a :component key assoc'ed with the component's individual
-configuration map.
+configuration map (not the complete system configuration).
 
 It is necessary to invoke the three-argument version of `with-config-schema`
-to trigger this; otherwise `configure-components` does not know what key
+to trigger this behavior; otherwise `configure-components` does not know what key
 in the merged configuration map to extract for the component.
 
 == License

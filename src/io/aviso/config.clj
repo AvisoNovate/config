@@ -143,23 +143,22 @@
           extension)]))
 
 (def ^{:added "0.1.9"} default-variants
-  "The default list of variants. To combination of profile and variant is the main way
+  "The default list of variants. The combination of profile and variant is the main way
   that resource file names are created (combined with a fixed prefix and a supported
   extension).
 
-  The order is important: `[nil :local]`. This means that the default file
-  (the nil variant) will be searched for and loaded first, and the `-local`
-  variant second.
+  The order of the variants determine load order, which is relevant.
+
+  A nil variant is always prefixed to this list; this represents loading default
+  configuration for the profile.
 
   Typically, a library creates a component or other entity that is represented within
   config as a profile.
 
-  The library provides the nil configuration variant, which forms the defaults.
-
   The local variant may be used for test-specific overrides, or overrides for a user's
   development (say, to redirect a database connection to a local database), or even
   used in production."
-  [nil :local])
+  [:local])
 
 (defn- get-parser [^String path extensions]
   (let [dotx      (.lastIndexOf path ".")
@@ -259,7 +258,7 @@
 
   :prefix
   : The optional prefix to place at the start of each configuration file read.
-  : In older version of the library, the prefix was required, but it is now
+  : In older version of the config library, the prefix was required, but it is now
     optional.
 
   :schemas
@@ -298,7 +297,8 @@
 
   :variants
   : The variants searched for, for each profile.
-  : [[default-variants]] provides the default list of variants.
+  : [[default-variants]] provides the default list of variants.  A nil variant
+    is always prefixed on the provided list.
 
   :resource-path
   : A function that builds resource paths from prefix, profile, and extension.
@@ -326,13 +326,14 @@
                           (into (System/getProperties))
                           (into (medley/map-keys name properties)))
         [arg-files arg-overrides] (parse-args args)
+        variants'     (cons nil variants)
         raw           (for [profile (concat profiles [nil])
-                            variant variants
+                            variant variants'
                             [extension parser] extensions
-                            path (resource-path {:prefix    prefix
-                                                 :profile   profile
-                                                 :variant   variant
-                                                 :extension extension})]
+                            path    (resource-path {:prefix    prefix
+                                                    :profile   profile
+                                                    :variant   variant
+                                                    :extension extension})]
                         (read-each path parser env-map))
         flattened     (apply concat raw)
         extras        (for [path (concat additional-files arg-files)

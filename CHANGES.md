@@ -1,7 +1,10 @@
-## 0.1.10 - UNRELEASED
+## 0.1.10 - 4 Mar 2016
 
 The `default-resource-path` function (or its :resource-path override in the options)
 must now return a seq of paths.
+
+The default list of variants is now just `[:local]`, and the variants are always
+prefixed with a nil variant, to load defaults for the profile.
 
 Added Schema types for the options argument to `assemble-configuration`.
 
