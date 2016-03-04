@@ -1,3 +1,5 @@
+## 0.1.11 - UNRELEASED
+
 ## 0.1.10 - 4 Mar 2016
 
 The `default-resource-path` function (or its :resource-path override in the options)
