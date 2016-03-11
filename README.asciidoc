@@ -19,9 +19,10 @@ link:http://yaml.org/[YAML] or
 link:https://github.com/edn-format/edn[EDN] format.
 
 The files are read in a specific order, based on a set of _profiles_.
-The name of the file to read is based on the profile.
+The name of the file to read is based on the profile, the variant (described shortly), and the
+extension (YAML or EDN).
 
-The contents of all the files are converted to Clojure maps (with keyword keys) and are
+The contents of all the configuration files are converted to Clojure maps (with keyword keys) and are
 deep-merged together.
 
 Meanwhile, a set of
@@ -79,7 +80,8 @@ For example, you might define a web service as:
 ----
 
 This component has a dependency on the :configuration component; in reality
-the configuration component is just the final map of configuration data.
+the configuration component is just the final map of configuration data (read from all files,
+merged together, validated and coerced).
 
 It has dependency on the :request-handler component, and a local slot for the
 Jetty server instance this component manages.
@@ -94,11 +96,11 @@ Without configuration files, your application will not start up; you will see
 errors about invalid schemas, because there is (in this example)
 no :web-service top-level key, and no :port key below that.
 
-Configuration files are on the class path; this means directly underneath
-the `resources` folder in a typical project.
+Configuration files are on the class path, within a `conf` package`; this means inside
+the `resources/conf` folder in a typical project.
 
 For the :web-service component, you would
-provide a default configuration file, `web-service-configuration.yaml`:
+provide a default configuration file, `web-service.yaml`:
 
 [source,clojure]
 ----
@@ -140,21 +142,69 @@ The :web-service key is being used in three ways here:
 But what if you want to override part of the :web-service configuration ...
 for example, to specify a different port?
 
-This can be accomplished in a number of ways:
+This can be accomplished in a number of ways.
 
-- By supplying a `configuration.yaml` file (this corresponds to the nil profile,
-  which is always loaded last).
-- By supplying a `web-service-local-configuration.yaml` file (because the :local
-  variant is loaded *after* the default variant).
-- By providing direct overrides to the configuration using the :overrides option
-  key.
-- By supplying an `override-configuration.yaml` file, and setting the
-  :profile option key to [:web-service :override].
-- By specifying additional files (on the file system, not the classpath)
-  to load using the :additional-files option key.
+First off all, it is possible to provide an explicit map of overrides
+when constructing the configuration map:
 
-Config is easily extensible to override how configuration files are named, and to support new formats
-of configuration files (by adding new extensions and parsers).
+[source,clojure]
+----
+   (config/extend-system-map {:profiles [:web-service]
+                              :overrides {:web-service {:port 9999}}})
+----
+
+However, that option is generally intended for special cases, such as overrides
+during testing.
+
+Most other approaches involve controlling which files are loaded to form the system configuration.
+
+So if you wish to have some overrides, you could define a file named `overrides.yaml`
+and ensure that is loaded after the :web-service profile:
+
+[source,clojure]
+----
+   (config/extend-system-map {:profiles [:web-service :overrides]
+                              :overrides {:web-service {:port 9999}}})
+----
+
+Another option it to support an additional variant for testing.  In this case,
+the file name would be `web-service-overrides.yaml`.
+
+[source,clojure]
+----
+   (config/extend-system-map {:profiles [:web-service]
+                              :variants [:overrides])
+----
+
+The nil variant is always loaded first, other variants (when they exist) overlay the nil variant.
+
+You could also explicitly load one or more file-system files:
+
+[source,clojure]
+----
+   (config/extend-system-map {:profiles        [:web-service]
+                             :additional-files ["overrides/tests.yaml"])
+----
+
+And finally, the :args option is intended to consume command line arguments:
+
+[source,clojure]
+----
+   (config/extend-system-map {:profiles [:web-service]
+                              :args     ["--load" "overrides/tests.yaml"])
+----
+
+or even:
+
+[source,clojure]
+----
+   (config/extend-system-map {:profiles [:web-service]
+                              :args     ["web-service/port=9999"])
+----
+
+
+Beyond this, it is possible to override how config expects files to be named, and to support
+new formats for configuration files.
 
 == Focused Configuration
 

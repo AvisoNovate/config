@@ -4,13 +4,13 @@
   (:require [schema.core :as s]
             [com.stuartsierra.component :as component]))
 
-(s/defschema WebServerConfig {:web-server {:port s/Int
-                                     :pool-size s/Int}})
+(s/defschema WebServerConfig {:web-server {:port      s/Int
+                                           :pool-size s/Int}})
 
 (s/defschema DatabaseConfig {:database
-                       {:hostname s/Str
-                        :user     s/Str
-                        :password s/Str}})
+                             {:hostname s/Str
+                              :user     s/Str
+                              :password s/Str}})
 
 (s/defschema Env {:home s/Str})
 
@@ -57,34 +57,27 @@
                           :gnip "gnop"}}))))
 
   (it "can parse YAML"
-      (->> (assemble-configuration {:prefix  "yaml"
-                                    :schemas [WebServerConfig]})
+      (->> (assemble-configuration {:profiles [:yaml]
+                                    :schemas  [WebServerConfig]})
            ;; note: coercion to s/Int occurred
            (should= {:web-server {:port      8080
                                   :pool-size 50}})))
 
   (it "can parse EDN"
-      (->> (assemble-configuration {:prefix  "edn"
-                                    :schemas [WebServerConfig]})
+      (->> (assemble-configuration {:profiles [:edn]
+                                    :schemas  [WebServerConfig]})
            (should= {:web-server {:port      8080
                                   :pool-size 25}})))
 
-  (it "overrides default profile with other profiles"
-      (->> (assemble-configuration {:prefix   "order1"
+  (it "overrides earlier variants with later variants"
+      (->> (assemble-configuration {:variants [:order1 :local]
                                     :schemas  [WebServerConfig]
                                     :profiles [:web]})
            (should= {:web-server {:port      9090
                                   :pool-size 40}})))
 
-  (it "overrides default profile with nil profile"
-      (->> (assemble-configuration {:prefix   "order2"
-                                    :schemas  [WebServerConfig]
-                                    :profiles [:testing]})
-           (should= {:web-server {:port      9090
-                                  :pool-size 40}})))
-
   (it "mixes together multiple profiles and schemas"
-      (->> (assemble-configuration {:prefix           "mix"
+      (->> (assemble-configuration {:profiles         [:mix]
                                     :schemas          [WebServerConfig DatabaseConfig]
                                     :additional-files ["dev-resources/mix-production-overrides.yaml"]
                                     :overrides        {:web-server {:port 9999}}})
@@ -109,23 +102,23 @@
   (context "expansions"
     (it "expands environment variables"
 
-        (->> (assemble-configuration {:prefix  "env"
-                                      :schemas [Env]})
+        (->> (assemble-configuration {:profiles [:env]
+                                      :schemas  [Env]})
              (should= {:home @home})))
 
     (it "expands environment variables on edn files"
-        (->> (assemble-configuration {:prefix  "envedn"
-                                      :schemas [Env]})
+        (->> (assemble-configuration {:profiles [:envedn]
+                                      :schemas  [Env]})
              (should= {:home @home})))
 
     (it "can use a default value on an environment variable"
-        (->> (assemble-configuration {:prefix  "envdef"
-                                      :schemas [{s/Any s/Any}]})
+        (->> (assemble-configuration {:profiles [:envdef]
+                                      :schemas  [{s/Any s/Any}]})
              (should= {:use-default "default-plugh"
                        :use-env     @home})))
 
     (it "can expand non-environment variable properties"
-        (->> (assemble-configuration {:prefix     "vars"
+        (->> (assemble-configuration {:profiles   [:vars]
                                       :properties {:special "an-option"}
                                       :schemas    [{s/Any s/Any}]})
              (should= {:unmatched "ok"
@@ -133,8 +126,8 @@
                        :home      @home})))
 
     (it "can expand JVM system properties"
-        (->> (assemble-configuration {:prefix  "sysprops"
-                                      :schemas [{s/Any s/Any}]})
+        (->> (assemble-configuration {:profiles [:sysprops]
+                                      :schemas  [{s/Any s/Any}]})
              (should= {:user-home (System/getProperty "user.home")}))))
 
   (it "can associate and extract schemas"
@@ -147,7 +140,7 @@
   (it "can build a system"
       (should= 9999
                (-> (component/system-map :web-server (new-web-server))
-                   (extend-system-map {:prefix   "system"
+                   (extend-system-map {:variants [:system :local]
                                        :profiles [:web-server]})
                    component/start-system
                    :web-server
@@ -155,18 +148,18 @@
 
   (context "configure-components"
     (it "can associate configuration for a plain map component"
-      (let [component-configuration {:foo :bar}
-            component               (with-config-schema {:name :this-component} :this-component s/Any)
-            system-map              (component/system-map :this-component component)
-            configured-system       (configure-components system-map {:this-component component-configuration})]
-        (should-be-same component-configuration (-> configured-system :this-component :configuration))))
+        (let [component-configuration {:foo :bar}
+              component               (with-config-schema {:name :this-component} :this-component s/Any)
+              system-map              (component/system-map :this-component component)
+              configured-system       (configure-components system-map {:this-component component-configuration})]
+          (should-be-same component-configuration (-> configured-system :this-component :configuration))))
 
     (it "can invoke Configurable/configure if implemented"
-      (let [component-configuration {:foo :bar}
-            component               (with-config-schema (map->Capturing {})
-                                                        :that-component s/Any)
-            system-map              (component/system-map :that-component component)
-            configured-system       (configure-components system-map {:that-component component-configuration})]
-        (should-be-same component-configuration (-> configured-system :that-component :captured))))))
+        (let [component-configuration {:foo :bar}
+              component               (with-config-schema (map->Capturing {})
+                                                          :that-component s/Any)
+              system-map              (component/system-map :that-component component)
+              configured-system       (configure-components system-map {:that-component component-configuration})]
+          (should-be-same component-configuration (-> configured-system :that-component :captured))))))
 
 (run-specs)

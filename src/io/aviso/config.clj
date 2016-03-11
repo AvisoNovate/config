@@ -3,14 +3,15 @@
 
   Configuration data is in the form of a *set* of files (mostly on the classpath) that follow a naming convention:
 
-      <prefix>-<profile>-<variant>-configuration.<extension>
+      conf/<profile>-<variant>-configuration.<extension>
 
-  The prefix is specific to the application; the list of profiles and variants is provided by the application.
+  The list of profiles and variants is provided by the application.
 
   Currently, the extensions \"yaml\" and \"edn\" are supported.
 
   The configuration data is read from an appropriate set of such files, and merged together.
-  The configuration is then passed through a Schema for validation and coercion.
+  The configuration is then passed through a Schema for validation and value coercion
+  (for example, to convert strings into numeric types).
 
   Validation helps ensure that simple typos are caught early.
   Coercion helps ensure that the data is both valid and in a format ready to be consumed."
@@ -97,8 +98,7 @@
 
 (s/defschema ^{:added "0.1.10"} ResourcePathSelector
   "Map of values passed to a [[ResourcePathGenerator]]."
-  {:prefix    (s/maybe s/Str)
-   :profile   (s/maybe s/Keyword)
+  {:profile   (s/maybe s/Keyword)
    :variable  (s/maybe s/Keyword)
    :extension s/Str})
 
@@ -110,11 +110,8 @@
   (s/=> [String] ResourcePathSelector))
 
 (s/defn default-resource-path :- [String]
-  "Default mapping of a resource path from prefix, profile, variant, and extension.
+  "Default mapping of a resource path from profile, variant, and extension.
   A single map is passed, with the following keys:
-
-  :prefix - string
-  : prefix applied to all resource paths, or nil
 
   :profile - keyword
   : profile to add to path, or nil
@@ -125,17 +122,18 @@
   :extension - string
   : extension (e.g., \"yaml\")
 
-  The result is typically \"prefix-profile-variant-configuration.ext\".
+  The result is typically \"conf/profile-variant-configuration.ext\".
 
   However, \"-variant\" is omitted when variant is nil, and \"-profile\"
   is omitted when profile is nil.
 
-  Since 0.1.9, prefix is optional and typically nil.
-
-  Since 0.1.10, returns a seq of files."
+  Since 0.1.10, returns a seq of files.
+  Although this implementation only returns a single value, supporting a seq of values
+  makes it easier to extend (rather than replace) the default behavior with an override."
   [selector :- ResourcePathSelector]
-  (let [{:keys [prefix profile variant extension]} selector]
-    [(str (->> [prefix profile variant "configuration"]
+  (let [{:keys [profile variant extension]} selector]
+    [(str "conf/"
+          (->> [profile variant]
                (remove nil?)
                (mapv name)
                (str/join "-"))
@@ -220,8 +218,7 @@
 
 (s/defschema ^{:added "0.1.10"} AssembleOptions
   "Defines the options passed to [[assemble-configuration]]."
-  {(s/optional-key :prefix)           s/Str
-   (s/optional-key :schemas)          [s/Any]
+  {(s/optional-key :schemas)          [s/Any]
    (s/optional-key :additional-files) [s/Str]
    (s/optional-key :args)             [s/Str]
    (s/optional-key :overrides)        s/Any
@@ -256,11 +253,6 @@
 
   In the second case, the path and value are as defined by [[merge-value]].
 
-  :prefix
-  : The optional prefix to place at the start of each configuration file read.
-  : In older version of the config library, the prefix was required, but it is now
-    optional.
-
   :schemas
   : A seq of schemas; these will be merged to form the full configuration schema.
 
@@ -280,7 +272,7 @@
 
   :profiles
   : A seq of keywords that identify which profiles should be loaded and in what order.
-    The provided profiles are suffixed with a nil profile. The default is an empty list.
+    The default is an empty list.
 
   :properties
   : An optional map of properties that may be substituted, just as environment
@@ -301,7 +293,7 @@
     is always prefixed on the provided list.
 
   :resource-path
-  : A function that builds resource paths from prefix, profile, and extension.
+  : A function that builds resource paths from  profile, variant, and extension.
   : The default is [[default-resource-path]], but this could be overridden
     to (for example), use a directory structure to organize configuration files
     rather than splitting up the different components of the name using dashes.
@@ -314,7 +306,7 @@
 
   The contents of each file are deep-merged together; later files override earlier files."
   [options :- AssembleOptions]
-  (let [{:keys [prefix schemas overrides profiles variants
+  (let [{:keys [schemas overrides profiles variants
                 resource-path extensions additional-files
                 args properties]
          :or   {extensions    default-extensions
@@ -327,11 +319,10 @@
                           (into (medley/map-keys name properties)))
         [arg-files arg-overrides] (parse-args args)
         variants'     (cons nil variants)
-        raw           (for [profile (concat profiles [nil])
+        raw           (for [profile profiles
                             variant variants'
                             [extension parser] extensions
-                            path    (resource-path {:prefix    prefix
-                                                    :profile   profile
+                            path    (resource-path {:profile   profile
                                                     :variant   variant
                                                     :extension extension})]
                         (read-each path parser env-map))

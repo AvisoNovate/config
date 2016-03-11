@@ -1,5 +1,14 @@
 ## 0.1.11 - UNRELEASED
 
+Some simplifications (that are also **incompatible changes**):
+
+* The :prefix option has been removed.
+
+* Configuration files are now stored on the classpath as `conf/<profile>-<variant>.<ext>`.
+
+* The `nil` profile is no longer added automatically; you may need to get similar behavior
+  by adding a :default variant.
+
 ## 0.1.10 - 4 Mar 2016
 
 The `default-resource-path` function (or its :resource-path override in the options)
