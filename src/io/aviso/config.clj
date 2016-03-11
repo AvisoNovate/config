@@ -98,12 +98,12 @@
 
 (s/defschema ^{:added "0.1.10"} ResourcePathSelector
   "Map of values passed to a [[ResourcePathGenerator]]."
-  {:profile   (s/maybe s/Keyword)
+  {:profile   s/Keyword
    :variable  (s/maybe s/Keyword)
    :extension s/Str})
 
 (s/defschema ^{:added "0.1.10"} ResourcePathGenerator
-  "A callback that converts configuration file resource selector
+  "A callback that converts a configuration file [[ResourcePathSelector]]
   into some number of resource path strings.
 
   The standard implementation is [[default-resource-path]]."
@@ -114,7 +114,7 @@
   A single map is passed, with the following keys:
 
   :profile - keyword
-  : profile to add to path, or nil
+  : profile to add to path
 
   :variant - keyword
   : variant to add to the path, or nil
@@ -122,10 +122,9 @@
   :extension - string
   : extension (e.g., \"yaml\")
 
-  The result is typically \"conf/profile-variant-configuration.ext\".
+  The result is typically \"conf/profile-variant.ext\".
 
-  However, \"-variant\" is omitted when variant is nil, and \"-profile\"
-  is omitted when profile is nil.
+  However, \"-variant\" is omitted when variant is nil.
 
   Since 0.1.10, returns a seq of files.
   Although this implementation only returns a single value, supporting a seq of values
@@ -301,10 +300,14 @@
   :extensions
   : Maps from extension (e.g., \"yaml\") to an appropriate parsing function.
 
-  The nil profile is always loaded last.
-  Any additional files will then be loaded.
+  Any additional files are loaded after all profile and variant files.
 
-  The contents of each file are deep-merged together; later files override earlier files."
+  Files specified via `--load` arguments are then loaded.
+
+  The contents of each file are deep-merged together; later files override earlier files.
+
+  Overrides via the :overrides key are applied, then overrides from command line arguments
+  (provided in the :args option) are applied."
   [options :- AssembleOptions]
   (let [{:keys [schemas overrides profiles variants
                 resource-path extensions additional-files
@@ -361,17 +364,17 @@
   The two arguments version is the original version.
   When using this approach, in concert with [[extend-system-map]], the
   component should have a dependency on the configuration component
-  (typically, :configuration).  The configuration componment
-  will be the configuration map, created via [[assemble-configuration]].
+  (typically added to the system map as key :configuration).
+  The configuration componment will be the configuration map, created via [[assemble-configuration]].
 
   The modern alternative is the three argument variant.
-  This defnes a top-level configuration key (e.g., :web-service)
+  This defines a top-level configuration key (e.g., :web-service)
   and a schema for just that key.
 
   The component will receive *just* that configuration in its
   :configuration key.
 
-  Alternately,the component may implement the
+  Alternately, the component may implement the
   [[Configurable]] protocol. It will be passed just its own configuration."
   ([component schema]
    (vary-meta component assoc ::schema schema))
