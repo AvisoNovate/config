@@ -87,8 +87,11 @@ It has dependency on the :request-handler component, and a local slot for the
 Jetty server instance this component manages.
 
 Notice that the component receives the *entire* system's configuration in its
-:configuration key (as a dependency). It can then extract the value(s)
-it needs (a better approach is provided below).
+:configuration key (as a dependency). It can then extract the values it needs.
+
+This is not ideal -- a better option was subsequently added and is
+link:#focused-configuration[described below].
+But first, we need to provide the configuration data this service needs.
 
 == Providing Configuration Files
 
@@ -96,7 +99,7 @@ Without configuration files, your application will not start up; you will see
 errors about invalid schemas, because there is (in this example)
 no :web-service top-level key, and no :port key below that.
 
-Configuration files are on the class path, within a `conf` package`; this means inside
+Configuration files are on the class path, within a `conf` package; this means inside
 the `resources/conf` folder in a typical project.
 
 For the :web-service component, you would
@@ -158,17 +161,21 @@ during testing.
 
 Most other approaches involve controlling which files are loaded to form the system configuration.
 
-So if you wish to have some overrides, you could define a file named `overrides.yaml`
+So if you wish to have some overrides, you could provide a configuration file named `overrides.yaml`
 and ensure that is loaded after the :web-service profile:
 
 [source,clojure]
 ----
-   (config/extend-system-map {:profiles [:web-service :overrides]
+   (config/extend-system-map {:profiles  [:web-service :overrides]
                               :overrides {:web-service {:port 9999}}})
 ----
 
-Another option it to support an additional variant for testing.  In this case,
-the file name would be `web-service-overrides.yaml`.
+Another option is to support an additional _variant_ for testing.
+
+For each profile, config searches for any variant.
+
+In this case, the file name would be `web-service-overrides.yaml`.
+`web-service` comes from the profil,e and `overrides` from the variant.
 
 [source,clojure]
 ----
@@ -176,14 +183,15 @@ the file name would be `web-service-overrides.yaml`.
                               :variants [:overrides])
 ----
 
-The nil variant is always loaded first, other variants (when they exist) overlay the nil variant.
+The nil variant (`web-service.yaml`) is always loaded first,
+the provided variants (when they exist) overlay the nil variant.
 
 You could also explicitly load one or more file-system files:
 
 [source,clojure]
 ----
-   (config/extend-system-map {:profiles        [:web-service]
-                             :additional-files ["overrides/tests.yaml"])
+   (config/extend-system-map {:profiles         [:web-service]
+                              :additional-files ["overrides/tests.yaml"])
 ----
 
 And finally, the :args option is intended to consume command line arguments:
@@ -249,7 +257,7 @@ There's a number of changes:
 - WebServiceConfig is *just* the configuration of the :web-service component
 - `with-config-schema` provides an additional argument, the top-level key
 - The `configure` method gets just the configuration for the :web-service
-  component; the map with the :port key.
+  component; the map with the :port key (as defined by the WebServiceConfig schema).
 - The `start` method is invoked *after* the `configure` method, so the port
   field is initialized.
 
