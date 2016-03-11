@@ -1,4 +1,4 @@
-## 0.1.11 - UNRELEASED
+## 0.1.11 - 11 Mar 2016
 
 Some simplifications (that are also **incompatible changes**):
 
