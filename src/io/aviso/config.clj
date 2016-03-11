@@ -3,7 +3,7 @@
 
   Configuration data is in the form of a *set* of files (mostly on the classpath) that follow a naming convention:
 
-      conf/<profile>-<variant>-configuration.<extension>
+      conf/<profile>-<variant>.<extension>
 
   The list of profiles and variants is provided by the application.
 
