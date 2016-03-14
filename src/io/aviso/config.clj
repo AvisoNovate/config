@@ -419,12 +419,12 @@
     (assoc component :configuration component-configuration)))
 
 (defn configure-components
-  "Configures the compoments in the system map, returning an updated system map.
+  "Configures the components in the system map, returning an updated system map.
 
   In the simple case, the configuration is expected to be in the :configuration
   key of the system map (the default when using [[extend-system-map]].
 
-  In the two argument case, the component is supplied as the second parameter.
+  In the two argument case, the system configuration map is supplied as the second parameter.
 
   Typically, this should be invoked *before* the system is started, as most
   components are expected to need configuration in order to start."

@@ -22,14 +22,16 @@ The files are read in a specific order, based on a set of _profiles_.
 The name of the file to read is based on the profile, the variant (described shortly), and the
 extension (YAML or EDN).
 
-The contents of all the configuration files are converted to Clojure maps (with keyword keys) and are
+The contents of all the configuration files are converted to Clojure maps and are
 deep-merged together.
+For YAML files, all keys are converted to keywords.
 
 Meanwhile, a set of
 link:https://github.com/Prismatic/schema[schemas] are merged together, and used to validate and coerce
 the data read from the individual configuration files.
 
-The intent of profiles is that there is an approximate mapping between components and profiles.
+The intent of profiles is that there is an approximate mapping between components and profiles:
+generally, each component will have exactly one profile.
 Each component will provide a schema (for validation and coercion) and profiles are used to ensure
 the correct configuration data is read.
 
@@ -46,12 +48,9 @@ Meanwhile, in production (on AWS) we can build a smaller system with a single mi
 We can also provide an additional configuration file that enables configuration overrides based on environment variables
 set by CloudFormation.
 
-When used with component, each component will have a keyword that will be used as a top-level key
-in the merged configuration, and as a configuration profile.
-
 == Implementing Components
 
-For example, you might define a web service as:
+You might define a web service as:
 
 [source,clojure]
 ----
@@ -83,13 +82,14 @@ This component has a dependency on the :configuration component; in reality
 the configuration component is just the final map of configuration data (read from all files,
 merged together, validated and coerced).
 
-It has dependency on the :request-handler component, and a local slot for the
+There is also a dependency on the :request-handler component, and a local slot for the
 Jetty server instance this component manages.
 
 Notice that the component receives the *entire* system's configuration in its
-:configuration key (as a dependency). It can then extract the values it needs.
+:configuration key (as a dependency).
+It can then extract just the values it needs.
 
-This is not ideal -- a better option was subsequently added and is
+This is not ideal -- a better option was subsequently added to the config library, and is
 link:#focused-configuration[described below].
 But first, we need to provide the configuration data this service needs.
 
@@ -128,22 +128,27 @@ The `extend-system-map` function reads the configuration files and associates
 a new key, :configuration, into the system map, containing all the configuration
 data.
 
-This configuration data is then available to the components, as injected
-dependencies (as outlined in the code sample above).
+This configuration data is then available to each of the components, as an injected
+dependency.
 
 Notice the specification of the :web-service profile; this controls exactly which
 configuration files will be loaded, merged, and validated.
 
-The :web-service key is being used in three ways here:
+The :web-service keyword is being used in three ways here:
 
 * As the component key in the system map
-* As the name of the profile for the component, identifying the configuration file(s) for the compoment
+* As the name of the profile for the component, identifying the configuration file(s) for the component
 * As the key within the system configuration containing the component's specific configuration
+
+Unless you have a compelling reason otherwise, you should always follow this pattern; the profile name
+should match the configuration key, which should match the component key in the system map.
 
 == Overrides
 
 But what if you want to override part of the :web-service configuration ...
 for example, to specify a different port?
+This is very common ... your local development configuration is going to vary considerably from
+your deployed production configuration.
 
 This can be accomplished in a number of ways.
 
@@ -175,7 +180,7 @@ Another option is to support an additional _variant_ for testing.
 For each profile, config searches for any variant.
 
 In this case, the file name would be `web-service-overrides.yaml`.
-`web-service` comes from the profil,e and `overrides` from the variant.
+`web-service` comes from the profile and `overrides` from the variant.
 
 [source,clojure]
 ----
@@ -183,10 +188,11 @@ In this case, the file name would be `web-service-overrides.yaml`.
                               :variants [:overrides]})
 ----
 
-The nil variant (`web-service.yaml`) is always loaded first,
+The nil variant (`web-service.yaml`) is always loaded first to provide the defaults,
 the provided variants (when they exist) overlay the nil variant.
 
-You could also explicitly load one or more file-system files:
+You could also explicitly load one or more configuration files stored on the file system
+(rather than as classpath resources):
 
 [source,clojure]
 ----
@@ -256,7 +262,7 @@ There's a number of changes:
   field for the port provided in the configuration.
 - WebServiceConfig is *just* the configuration of the :web-service component
 - `with-config-schema` provides an additional argument, the top-level key
-- The `configure` method gets just the configuration for the :web-service
+- The `configure` method is passed just the configuration for the :web-service
   component; the map with the :port key (as defined by the WebServiceConfig schema).
 - The `start` method is invoked *after* the `configure` method, so the port
   field is initialized.
