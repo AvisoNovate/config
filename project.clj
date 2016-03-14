@@ -1,4 +1,4 @@
-(defproject io.aviso/config "0.1.11"
+(defproject io.aviso/config "0.1.12"
   :description "Configure a system using YAML or EDN files"
   :url "https://github.com/AvisoNovate/config"
   :license {:name "Apache Sofware License 2.0"
