@@ -105,7 +105,7 @@ the `resources/conf` folder in a typical project.
 For the :web-service component, you would
 provide a default configuration file, `web-service.yaml`:
 
-[source,clojure]
+[source,yaml]
 ----
 web-service:
   port: 8080
@@ -327,13 +327,15 @@ EDN syntax.
 
 As an alternative, you may use two EDN reader tags in your EDN files:
 
-#config/prop
-: Used to handle expansions.  The value is either a single string, or a vector
-  of string and default value.
+#config/prop::
+    Used to handle expansions.  The value is either a single string, or a vector
+    of string and default value.
 
-#config/join
-: Joins a number of values together to form a single string; this is used when
-  an expansion should occur inside a single string.
+#config/join::
+    Joins a number of values together to form a single string; this is used when
+    an expansion should occur inside a single string.
+
+Here's an example showing all the variants:
 
 [source,clojure]
 ----
