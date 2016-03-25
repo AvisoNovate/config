@@ -1,4 +1,4 @@
-## 0.1.12 - UNRELEASED
+## 0.1.12 - 25 Mar 2016
 
 The signature of parser callbacks has changed with this release.
 
