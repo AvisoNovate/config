@@ -1,5 +1,5 @@
 (defproject io.aviso/config "0.1.12"
-  :description "Configure a system using YAML or EDN files"
+  :description "Configure a Clojure system using YAML or EDN files"
   :url "https://github.com/AvisoNovate/config"
   :license {:name "Apache Sofware License 2.0"
             :url  "http://www.apache.org/licenses/LICENSE-2.0.html"}
@@ -12,7 +12,7 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [io.aviso/pretty "0.1.24"]
                  [io.aviso/tracker "0.1.7"]
-                 [prismatic/schema "1.0.5"]
+                 [prismatic/schema "1.1.0"]
                  [com.stuartsierra/component "0.3.1"]
                  [medley "0.7.3"]
                  [clj-yaml "0.4.0"]]
@@ -21,7 +21,6 @@
   :aliases {"release"    ["do"
                           "clean,"
                           "spec,",
-                          "codox,"
                           "deploy" "clojars"]}
   :test-paths ["spec"]
   :codox {:source-uri "https://github.com/AvisoNovate/confiig/blob/master/{filepath}#L{line}"
