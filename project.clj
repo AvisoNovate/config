@@ -1,4 +1,4 @@
-(defproject io.aviso/config "0.1.12"
+(defproject io.aviso/config "0.1.13"
   :description "Configure a Clojure system using YAML or EDN files"
   :url "https://github.com/AvisoNovate/config"
   :license {:name "Apache Sofware License 2.0"
@@ -23,5 +23,5 @@
                           "spec,",
                           "deploy" "clojars"]}
   :test-paths ["spec"]
-  :codox {:source-uri "https://github.com/AvisoNovate/confiig/blob/master/{filepath}#L{line}"
+  :codox {:source-uri "https://github.com/AvisoNovate/config/blob/master/{filepath}#L{line}"
           :metadata   {:doc/format :markdown}})
