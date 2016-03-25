@@ -313,13 +313,11 @@ In production, we might supply an additional production variant, and related fil
 
 [source,yaml]
 ----
-[source,clojure]
-----
 web-service:
   port: ${WS_PORT}
 ----
 
-... where `WS_PORT` is an environment variable.
+where `WS_PORT` is an environment variable.
 
 
 == EDN Reader
