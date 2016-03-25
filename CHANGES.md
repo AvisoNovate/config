@@ -1,5 +1,9 @@
 ## 0.1.12 - UNRELEASED
 
+The signature of parser callbacks has changed with this release.
+
+Added support for #config/prop and #config/join readers, when parsing EDN content.
+
 ## 0.1.11 - 11 Mar 2016
 
 Some simplifications (that are also **incompatible changes**):

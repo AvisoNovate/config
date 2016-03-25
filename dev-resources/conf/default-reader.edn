@@ -1,0 +1,1 @@
+{:default-value #config/prop ["unknown-string" "totally handled"]}

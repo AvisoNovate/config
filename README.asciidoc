@@ -292,6 +292,69 @@ It is necessary to invoke the three-argument version of `with-config-schema`
 to trigger this behavior; otherwise `configure-components` does not know what key
 in the merged configuration map to extract for the component.
 
+== Expansions
+
+Before source content is parsed (as either YAML or EDN) it has expansions processed.
+
+An expansion is a sequence in the source text of the form `${...}`.
+
+The characters inside the braces is the key to expand.  It may be an environment variable name,
+a JVM system property, or an explicit property passed in the options to the `assemble-configuration`.
+
+This is a very useful concept, since it allows final configuration to be determined from
+environment variables supplied at runtime. You see this pattern with Docker containers, or
+AWS images using CloudFront ... a container provides details about the application and
+its dependencies via environment variables.
+
+In addition, a default value can be specified after a colon, e.g.: `${HOST:localhost}`.
+
+In our example above, the 8080 web port is just for development.
+In production, we might supply an additional production variant, and related file:
+
+[source,yaml]
+----
+[source,clojure]
+----
+web-service:
+  port: ${WS_PORT}
+----
+
+... where `WS_PORT` is an environment variable.
+
+
+== EDN Reader
+
+The use of the `${...}` syntax inside EDN files is less than ideal, as it deviates from
+EDN syntax.
+
+As an alternative, you may use two EDN reader tags in your EDN files:
+
+#config/prop
+: Used to handle expansions.  The value is either a single string, or a vector
+  of string and default value.
+
+#config/join
+: Joins a number of values together to form a single string; this is used when
+  an expansion should occur inside a single string.
+
+[source,clojure]
+----
+{:connection-pool
+  {:user-name #config/prop ["DB_USER" "accountsuser"]
+   :user-pw #config/prop "DB_PW"
+   :url  #config/join ["jdbc:postgresql://"
+                       #config/prop "DB_HOST"
+                       ":"
+                       #config/prop "DB_PORT"
+                       "/accounts"]}}
+----
+
+
+In this example, the `DB_USER`, `DB_PW`, `DB_HOST`, and `DB_PORT` environment variables
+all play a role (though `DB_USER` is optional).
+
+The configuration key [:connection-pool :url] is a single string.
+
 == License
 
 Config is available under the terms of the Apache Software License 2.0.

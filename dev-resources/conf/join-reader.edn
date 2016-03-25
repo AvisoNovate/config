@@ -1,0 +1,2 @@
+{:static-value #config/join ["the" \space "number" \space 2001]
+ :prop-value   #config/join ["<" #config/prop "magic" ">"]}

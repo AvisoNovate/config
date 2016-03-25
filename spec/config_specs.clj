@@ -2,7 +2,8 @@
   (:use io.aviso.config
         speclj.core)
   (:require [schema.core :as s]
-            [com.stuartsierra.component :as component]))
+            [com.stuartsierra.component :as component])
+  (:import (clojure.lang ExceptionInfo)))
 
 (s/defschema WebServerConfig {:web-server {:port      s/Int
                                            :pool-size s/Int}})
@@ -145,6 +146,36 @@
                    component/start-system
                    :web-server
                    :port)))
+
+  (context "EDN readers"
+
+    (context "#config/prop"
+
+      (it "can expand a single string"
+          (->> (assemble-configuration {:profiles   [:simple-reader]
+                                        :properties {:single-string "katmandu"}
+                                        :schemas    [s/Any]})
+               (should= {:just-string "katmandu"})))
+
+      (it "can expand a string using a default"
+          (->> (assemble-configuration {:profiles [:default-reader]
+                                        :schemas  [s/Any]})
+               (should= {:default-value "totally handled"})))
+
+      (it "will fail if unable to expand"
+          (should-throw
+            ExceptionInfo
+            "Unable to find expansion for `single-string'."
+            (assemble-configuration {:profiles [:simple-reader]
+                                     :schemas  [s/Any]}))))
+
+    (context "#config/join"
+      (it "can join things together"
+          (->> (assemble-configuration {:profiles   [:join-reader]
+                                        :properties {:magic "kazzam"}
+                                        :schemas    [s/Any]})
+               (should= {:static-value "the number 2001"
+                         :prop-value   "<kazzam>"})))))
 
   (context "configure-components"
     (it "can associate configuration for a plain map component"

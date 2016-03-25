@@ -25,7 +25,43 @@
             [clojure.java.io :as io]
             [medley.core :as medley]
             [com.stuartsierra.component :as component]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import (java.net URL)))
+
+(defn- join-reader
+  "An EDN reader used to join together a vector of values.
+
+  Exposed as `#config/join`."
+  [values]
+  {:pre [(vector? values)]}
+  (apply str values))
+
+(defn- expand-env-var
+  [source env-map expansion env-var default-value]
+  (or (get env-map env-var)
+      default-value
+      (throw (ex-info (format "Unable to find expansion for `%s'." expansion)
+                      {:env-var      env-var
+                       :env-map-keys (keys env-map)
+                       :source       source}))))
+
+(defn- property-reader
+  "An EDN reader used to convert either a string, or a vector of two strings, into a single
+  string, using the properties assembled for the current invocation of
+  [[assemble-configuration]].
+
+  This is used as the EDN-compliant way to do substitutions, as per `${...}` syntax.
+
+  A partial of this is exposed as `#config/prop`."
+  [url env-map value]
+  {:pre [(or (string? value)
+             (and (vector? value)
+                  (= 2 (count value))))]}
+  (if (string? value)
+    (expand-env-var url env-map value value nil)
+    (let [[env-var default-value] value]
+      (expand-env-var url env-map value env-var default-value))))
+
 
 (defn- resources
   "For a given resource name on the classpath, provides URLs for all the resources that match, in
@@ -42,16 +78,12 @@
       [env-ref])))
 
 (defn- expand-env-vars
-  [source env-map]
+  [env-map source]
   (str/replace source
                #"\$\{((?!\$\{).*?)\}"
                (fn [[expansion env-var-reference]]
                  (let [[env-var default-value] (split-env-ref env-var-reference)]
-                   (or (get env-map env-var default-value)
-                       (throw (ex-info (format "Unable to find expansion for `%s'." expansion)
-                                       {:env-var      env-var
-                                        :env-map-keys (keys env-map)
-                                        :source       source})))))))
+                   (expand-env-var source env-map expansion env-var default-value)))))
 
 (defn- read-single
   "Reads a single configuration file from a URL, expanding environment variables, and
@@ -60,9 +92,9 @@
   (when url
     (t/track
       #(format "Reading configuration from `%s'." url)
-      (-> (slurp url)
-          (expand-env-vars env-map)
-          parser))))
+      (->> (slurp url)
+           (expand-env-vars env-map)
+           (parser url env-map)))))
 
 (defn- read-each
   "Read all resources matching a given path into a vector of parsed
@@ -82,19 +114,31 @@
 
 (s/defschema ^{:added "0.1.10"}
   ConfigParser
-  "A callback that is passed the content from a file and returns the parsed configuration.
+  "A callback that is passed:
+
+  * The URL of the resource.
+
+  * The compiled environment and properties map
+
+  * The text content of the resource (after processing expansions).
+
+  The callback must return the parsed version of the content.
 
   Each extension is mapped to a corresponding ConfigParser.
 
   [[default-extensions]] provides the default mappings."
-  (s/=> s/Any s/Str))
+  (s/=> s/Any URL {s/Str s/Str} s/Str))
 
 (def default-extensions
   "The default mapping from file extension to a [[ConfigParser]] for content from such a file.
 
   Provides parsers for the \"yaml\" and \"edn\" extensions."
-  {"yaml" #(yaml/parse-string % true)
-   "edn"  edn/read-string})
+  {"yaml" (fn [_ _ content]
+            (yaml/parse-string content true))
+   "edn"  (fn [uri env-map content]
+            (edn/read-string {:readers {'config/join join-reader
+                                        'config/prop (partial property-reader uri env-map)}}
+                             content))})
 
 (s/defschema ^{:added "0.1.10"} ResourcePathSelector
   "Map of values passed to a [[ResourcePathGenerator]]."
