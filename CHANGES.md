@@ -1,4 +1,7 @@
-## 0.1.13 - UNRELEASED
+## 0.1.13 - 15 Apr 2016
+
+Fix a mis-named key in the ResourcePathSelector schema (was `:variable`, but should be
+`:variant`).
 
 ## 0.1.12 - 25 Mar 2016
 

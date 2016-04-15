@@ -89,9 +89,9 @@
                                   :password "secret"}})))
 
   (it "processes arguments"
-      (->> (assemble-configuration {:prefix  "mix"
-                                    :schemas [WebServerConfig DatabaseConfig]
-                                    :args    ["--load" "dev-resources/mix-production-overrides.yaml"
+      (->> (assemble-configuration {:profiles [:mix]
+                                    :schemas  [WebServerConfig DatabaseConfig]
+                                    :args     ["--load" "dev-resources/mix-production-overrides.yaml"
                                               "web-server/port=9999"
                                               "database/hostname=db"]})
            (should= {:web-server {:port      9999

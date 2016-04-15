@@ -143,7 +143,7 @@
 (s/defschema ^{:added "0.1.10"} ResourcePathSelector
   "Map of values passed to a [[ResourcePathGenerator]]."
   {:profile   s/Keyword
-   :variable  (s/maybe s/Keyword)
+   :variant   (s/maybe s/Keyword)
    :extension s/Str})
 
 (s/defschema ^{:added "0.1.10"} ResourcePathGenerator
