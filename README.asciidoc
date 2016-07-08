@@ -80,7 +80,7 @@ You might define a web service as:
       (config/with-config-schema :web-service WebServiceConfig)))
 ----
 
-This is a standard component, with the `start` and ``stop` lifecycle methods,
+This is a standard component, with the `start` and `stop` lifecycle methods,
 a dependency on another component (:request-handler), and a local field
 for the instance of Jetty managed by the component.
 
@@ -157,8 +157,8 @@ when constructing the configuration map:
 
 [source,clojure]
 ----
-   (config/assemble-configuration {:profiles [:web-service]
-                                   :schemas  (config/system-schemas system)
+   (config/assemble-configuration {:profiles  [:web-service]
+                                   :schemas   (config/system-schemas system)
                                    :overrides {:web-service {:port 9999}}})
 ----
 
@@ -172,7 +172,7 @@ and ensure that is loaded after the :web-service profile:
 
 [source,clojure]
 ----
-   (config/assemble-configuration {:profiles  [:web-service :overrides]
+   (config/assemble-configuration {:profiles [:web-service :overrides]
                                    :schemas  (config/system-schemas system)})
 ----
 
@@ -209,7 +209,7 @@ And finally, the :args option is intended to consume command line arguments:
 ----
    (config/assemble-configuration {:profiles [:web-service]
                                    :schemas  (config/system-schemas system)
-                                   :args     ["--load" "overrides/tests.yaml"]})
+                                   :args     ["--load" "overrides/tests.edn"]})
 ----
 
 or even:
@@ -239,17 +239,18 @@ is both rigid and clumsy.
 Instead, it is possible to reference these dynamic properties inside the configuration
 files using the special reader macros supplied by config.
 
+Properties are:
+
+  * Shell environment variables.
+
+  * JVM System properties.
+
+  * The :properties option, passed to `assemble-configuration`.
+
 #config/prop::
-    Accessed dynamic properties.  The value is either a single string key, or a vector
+    Accesses dynamic properties.
+    The value is either a single string key, or a vector
     of string key followed by a default value.
-
-    Properties are:
-
-    * Shell environment variables.
-
-    * JVM System properties.
-
-    * The :properties option, passed to `assemble-configuration`.
 
 #config/join::
     Joins a number of values together to form a single string; this is used when
@@ -273,7 +274,7 @@ Here's an example showing all the variants:
 In this example, the `DB_USER`, `DB_PW`, `DB_HOST`, and `DB_PORT` environment variables
 all play a role (though `DB_USER` is optional, since it has a default value).
 
-The configuration key [:connection-pool :url] is a single string.
+In the final configuration, the key [:connection-pool :url] is a single string.
 
 == License
 
