@@ -5,15 +5,12 @@
             [com.stuartsierra.component :as component])
   (:import (clojure.lang ExceptionInfo)))
 
-(s/defschema WebServerConfig {:web-server {:port      s/Int
-                                           :pool-size s/Int}})
+(s/defschema WebServerConfig {:port      s/Int
+                              :pool-size s/Int})
 
-(s/defschema DatabaseConfig {:database
-                             {:hostname s/Str
-                              :user     s/Str
-                              :password s/Str}})
-
-(s/defschema Env {:home s/Str})
+(s/defschema DatabaseConfig {:hostname s/Str
+                             :user     s/Str
+                             :password s/Str})
 
 (defrecord Capturing [captured]
 
@@ -22,20 +19,20 @@
   (configure [this configuration]
     (assoc this :captured configuration)))
 
+;; Note: doesn't implement Configurable, get a :configuration key instead.
 (defrecord WebServer [configuration port pool-size]
 
   component/Lifecycle
 
   (start [this]
-    (assoc this :port (get-in configuration [:web-server :port])))
+    (assoc this :port (:port configuration)))
 
   (stop [this] this))
 
 (defn new-web-server
   []
   (-> (map->WebServer {})
-      (component/using [:configuration])
-      (with-config-schema WebServerConfig)))
+      (with-config-schema :web-server WebServerConfig)))
 
 (describe "io.aviso.config"
 
@@ -59,20 +56,21 @@
 
   (it "can parse EDN"
       (->> (assemble-configuration {:profiles [:edn]
-                                    :schemas  [WebServerConfig]})
+                                    :schemas  [{:web-server WebServerConfig}]})
            (should= {:web-server {:port      8080
                                   :pool-size 25}})))
 
   (it "overrides earlier variants with later variants"
       (->> (assemble-configuration {:variants [:order1 :local]
-                                    :schemas  [WebServerConfig]
+                                    :schemas  [{:web-server WebServerConfig}]
                                     :profiles [:web]})
            (should= {:web-server {:port      9090
                                   :pool-size 40}})))
 
   (it "mixes together multiple profiles and schemas"
       (->> (assemble-configuration {:profiles         [:mix]
-                                    :schemas          [WebServerConfig DatabaseConfig]
+                                    :schemas          [{:web-server WebServerConfig}
+                                                       {:database DatabaseConfig}]
                                     :additional-files ["dev-resources/mix-production-overrides.edn"]
                                     :overrides        {:web-server {:port 9999}}})
            (should= {:web-server {:port      9999
@@ -83,10 +81,11 @@
 
   (it "processes arguments"
       (->> (assemble-configuration {:profiles [:mix]
-                                    :schemas  [WebServerConfig DatabaseConfig]
+                                    :schemas  [{:web-server WebServerConfig}
+                                               {:database DatabaseConfig}]
                                     :args     ["--load" "dev-resources/mix-production-overrides.edn"
-                                              "web-server/port=9999"
-                                              "database/hostname=db"]})
+                                               "web-server/port=9999"
+                                               "database/hostname=db"]})
            (should= {:web-server {:port      9999
                                   :pool-size 100}
                      :database   {:hostname "db"
@@ -94,20 +93,24 @@
                                   :password "secret"}})))
 
   (it "can associate and extract schemas"
-      (->> [(with-config-schema {} WebServerConfig)
+      (->> [(with-config-schema {} :web-server WebServerConfig)
             {}
-            (with-config-schema {} DatabaseConfig)]
+            (with-config-schema {} :database DatabaseConfig)]
            extract-schemas
-           (should= [WebServerConfig DatabaseConfig])))
+           (should= [{:web-server WebServerConfig}
+                     {:database DatabaseConfig}])))
 
   (it "can build a system"
       (should= 9999
-               (-> (component/system-map :web-server (new-web-server))
-                   (extend-system-map {:variants [:system :local]
-                                       :profiles [:web-server]})
-                   component/start-system
-                   :web-server
-                   :port)))
+               (let [system (component/system-map :web-server (new-web-server))
+                     configuration (assemble-configuration {:variants [:system :local]
+                                                            :profiles [:web-server]
+                                                            :schemas (system-schemas system)})]
+                 (-> system
+                     (configure-components configuration)
+                     component/start-system
+                     :web-server
+                     :port))))
 
   (context "EDN parsing"
 

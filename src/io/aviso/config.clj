@@ -216,7 +216,7 @@
   The :args option is passed command line arguments (as from a -main function). The arguments
   are used to add further additional files to load, and provide additional overrides.
 
-  When the EDN files are read, some reader macros are supplied to allow for some
+  When the EDN files are read, a set of reader macros are enabled to allow for some
   dynamicism in the parsed content: this represents overrides from either shell
   environment variables, JVM system properties, of the :properties option.
 
@@ -327,13 +327,6 @@
 (defn with-config-schema
   "Adds metadata to the component to define the configuration schema for the component.
 
-  The two arguments version is the original version.
-  When using this approach, in concert with [[extend-system-map]], the
-  component should have a dependency on the configuration component
-  (typically added to the system map as key :configuration).
-  The configuration componment will be the configuration map, created via [[assemble-configuration]].
-
-  The modern alternative is the three argument variant.
   This defines a top-level configuration key (e.g., :web-service)
   and a schema for just that key.
 
@@ -342,12 +335,10 @@
 
   Alternately, the component may implement the
   [[Configurable]] protocol. It will be passed just its own configuration."
-  ([component schema]
-   (vary-meta component assoc ::schema schema))
-  ([component config-key schema]
-   (vary-meta component assoc ::config-key config-key
-              ;; This is what's merged to form the master schema
-              ::schema {config-key schema})))
+  [component config-key schema]
+  (vary-meta component assoc ::config-key config-key
+             ;; This is what's merged to form the master schema
+             ::schema {config-key schema}))
 
 (defn extract-schemas
   "For a seq of components (the values of a system map),
@@ -355,18 +346,11 @@
   [components]
   (keep (comp ::schema meta) components))
 
-(defn extend-system-map
-  "Uses the system map and options to read the configuration, using [[assemble-configuration]].
-  Returns the system map with one extra component, the configuration
-  itself (ready to be injected into the other components)."
-  {:added "0.1.9"}
-  ([system-map options]
-   (extend-system-map system-map :configuration options))
-  ([system-map configuration-key options]
-   (let [schemas       (-> system-map vals extract-schemas)
-         configuration (t/track "Reading configuration."
-                                (assemble-configuration (assoc options :schemas schemas)))]
-     (assoc system-map configuration-key configuration))))
+(defn system-schemas
+  "A convienience for extracting the schemas from a system."
+  {:added "0.1.14"}
+  [system]
+  (-> system vals extract-schemas))
 
 (defn- apply-configuration
   [component full-configuration]
@@ -387,18 +371,11 @@
 (defn configure-components
   "Configures the components in the system map, returning an updated system map.
 
-  In the simple case, the configuration is expected to be in the :configuration
-  key of the system map (the default when using [[extend-system-map]].
-
-  In the two argument case, the system configuration map is supplied as the second parameter.
-
   Typically, this should be invoked *before* the system is started, as most
   components are expected to need configuration in order to start."
   {:added "0.1.9"}
-  ([system-map]
-   (configure-components system-map (:configuration system-map)))
-  ([system-map configuration]
-   (component/update-system system-map
-                            (keys system-map)
-                            apply-configuration
-                            configuration)))
+  [system-map configuration]
+  (component/update-system system-map
+                           (keys system-map)
+                           apply-configuration
+                           configuration))

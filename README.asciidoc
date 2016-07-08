@@ -14,20 +14,17 @@ link:http://avisonovate.github.io/docs/config/[API Documentation]
 == Overview
 
 Config reads a series of files, primarily from the classpath.
-The files contain contain configuration data, in either
-link:http://yaml.org/[YAML] or
+The files contain contain configuration data in
 link:https://github.com/edn-format/edn[EDN] format.
 
 The files are read in a specific order, based on a set of _profiles_.
-The name of the file to read is based on the profile, the variant (described shortly), and the
-extension (YAML or EDN).
+The name of the file to read is based on the profile and the variant (described shortly).
 
 The contents of all the configuration files are converted to Clojure maps and are
 deep-merged together.
-For YAML files, all keys are converted to keywords.
 
 Meanwhile, a set of
-link:https://github.com/Prismatic/schema[schemas] are merged together, and used to validate and coerce
+link:https://github.com/Prismatic/schema[schemas] are merged together, and used to validate
 the data read from the individual configuration files.
 
 The intent of profiles is that there is an approximate mapping between components and profiles:
@@ -39,7 +36,7 @@ But what about the
 link:http://12factor.net/config[12 Factor App]'s guideline to store configuration only as environment
 variables?
 This is embraced by config, because the files may contain environment variable references that are expanded
-at runtime, before parsing of the file content.
+at runtime.
 
 At link:http://www.aviso.io/[Aviso], we use these features in a number of ways.
 For example, for quick testing we combine a number of microservices (each of which
@@ -54,44 +51,45 @@ You might define a web service as:
 
 [source,clojure]
 ----
-(defrecord WebService [configuration request-handler jetty-instance]
+(defrecord WebService [port request-handler jetty-instance]
+
+  config/Configurable
+
+  (configure [this configuration]
+    (merge this configuration))
 
   component/Lifecycle
 
   (start [this]
     (assoc :jetty-instance (jetty/run-jetty
                               request-handler
-                              {:port (get-in configuration [:web-service :port])
+                              {:port port
                                :join? false})))
 
   (stop [this]
     (.stop jetty-instance)
-    this))
+    (assoc this :jetty-instance nil))
 
 (s/defschema WebServiceConfig
-  {:web-service {:port s/Int}})
+  {:port s/Int})
 
 (defn web-service
   []
   (-> (map->WebService {})
-      (component/using [:configuration :request-handler])
-      (config/with-config-schema WebServiceConfig)))
+      (component/using [:request-handler])
+      (config/with-config-schema :web-service WebServiceConfig)))
 ----
 
-This component has a dependency on the :configuration component; in reality
-the configuration component is just the final map of configuration data (read from all files,
-merged together, validated and coerced).
+This is a standard component, with the `start` and ``stop` lifecycle methods,
+a dependency on another component (:request-handler), and a local field
+for the instance of Jetty managed by the component.
 
-There is also a dependency on the :request-handler component, and a local slot for the
-Jetty server instance this component manages.
+In addition, the component is configurable: it implements the `Configurable`
+protocol, and receives its specific configuration as a map.
+The configuration passed to the component conforms to the `WebServiceConfig` schema;
+it will have a `:port` key.
 
-Notice that the component receives the *entire* system's configuration in its
-:configuration key (as a dependency).
-It can then extract just the values it needs.
-
-This is not ideal -- a better option was subsequently added to the config library, and is
-link:#focused-configuration[described below].
-But first, we need to provide the configuration data this service needs.
+The `configure` method is invoked before the `start` method.
 
 == Providing Configuration Files
 
@@ -103,12 +101,11 @@ Configuration files are on the class path, within a `conf` package; this means i
 the `resources/conf` folder in a typical project.
 
 For the :web-service component, you would
-provide a default configuration file, `web-service.yaml`:
+provide a default configuration file, `web-service.edn`:
 
-[source,yaml]
+[source,clojure]
 ----
-web-service:
-  port: 8080
+{:web-service {:port 8080}}
 ----
 
 == Starting the System
@@ -117,19 +114,22 @@ And finally, build and start a system from all this:
 
 [source,clojure]
 ----
-(-> (component/system-map
-      :web-service (web-service)
-      :request-handler (request-handler))
-    (config/extend-system-map {:profiles [:web-service]})
-    component/start-system)
+(let [system (component/system-map
+               :web-service (web-service)
+               :request-handler (request-handler))
+      configuration (config/assemble-configuration {:profiles [:web-service]
+                                                    :schemas  (config/system-schemas system)})]
+    (-> system
+        (config/configure-components configuration)
+        component/start-system))
 ----
 
-The `extend-system-map` function reads the configuration files and associates
-a new key, :configuration, into the system map, containing all the configuration
-data.
+The `assemble-configuration` function reads the configuration files and returns the final
+configuration map, after reading and merging all the files, and performing all validations.
 
-This configuration data is then available to each of the components, as an injected
-dependency.
+In order to do the validation, it needs the schemas; this information is placed onto the
+components by the `with-config-schema` function; the `system-schemas` function gets that
+data back.
 
 Notice the specification of the :web-service profile; this controls exactly which
 configuration files will be loaded, merged, and validated.
@@ -157,8 +157,9 @@ when constructing the configuration map:
 
 [source,clojure]
 ----
-   (config/extend-system-map {:profiles [:web-service]
-                              :overrides {:web-service {:port 9999}}})
+   (config/assemble-configuration {:profiles [:web-service]
+                                   :schemas  (config/system-schemas system)
+                                   :overrides {:web-service {:port 9999}}})
 ----
 
 However, that option is generally intended for special cases, such as overrides
@@ -166,29 +167,30 @@ during testing.
 
 Most other approaches involve controlling which files are loaded to form the system configuration.
 
-So if you wish to have some overrides, you could provide a configuration file named `overrides.yaml`
+So if you wish to have some overrides, you could provide a configuration file named `overrides.edn`
 and ensure that is loaded after the :web-service profile:
 
 [source,clojure]
 ----
-   (config/extend-system-map {:profiles  [:web-service :overrides]
-                              :overrides {:web-service {:port 9999}}})
+   (config/assemble-configuration {:profiles  [:web-service :overrides]
+                                   :schemas  (config/system-schemas system)})
 ----
 
 Another option is to support an additional _variant_ for testing.
 
 For each profile, config searches for any variant.
 
-In this case, the file name would be `web-service-overrides.yaml`.
+In this case, the file name would be `web-service-overrides.edn`.
 `web-service` comes from the profile and `overrides` from the variant.
 
 [source,clojure]
 ----
-   (config/extend-system-map {:profiles [:web-service]
-                              :variants [:overrides]})
+   (config/assemble-configuration {:profiles [:web-service]
+                                   :schemas  (config/system-schemas system)
+                                   :variants [:overrides]})
 ----
 
-The nil variant (`web-service.yaml`) is always loaded first to provide the defaults,
+The nil variant (`web-service.edn`) is always loaded first to provide the defaults,
 the provided variants (when they exist) overlay the nil variant.
 
 You could also explicitly load one or more configuration files stored on the file system
@@ -196,140 +198,58 @@ You could also explicitly load one or more configuration files stored on the fil
 
 [source,clojure]
 ----
-   (config/extend-system-map {:profiles         [:web-service]
-                              :additional-files ["overrides/tests.yaml"]})
+   (config/assemble-configuration {:profiles         [:web-service]
+                                   :schemas          (config/system-schemas system)
+                                   :additional-files ["overrides/tests.edn"]})
 ----
 
 And finally, the :args option is intended to consume command line arguments:
 
 [source,clojure]
 ----
-   (config/extend-system-map {:profiles [:web-service]
-                              :args     ["--load" "overrides/tests.yaml"]})
+   (config/assemble-configuration {:profiles [:web-service]
+                                   :schemas  (config/system-schemas system)
+                                   :args     ["--load" "overrides/tests.yaml"]})
 ----
 
 or even:
 
 [source,clojure]
 ----
-   (config/extend-system-map {:profiles [:web-service]
-                              :args     ["web-service/port=9999"]})
+   (config/assemble-configuration {:profiles [:web-service]
+                                   :schemas  (config/system-schemas system)
+                                   :args     ["web-service/port=9999"]})
 ----
 
 
 Beyond this, it is possible to override how config expects files to be named, and to support
 new formats for configuration files.
 
-== Focused Configuration
+== Runtime Properties
 
-Starting in 0.1.9, it is possible to receive configuration specific to the
-component.
+Often, especially in production, you don't know all of the configuration until
+your application is actually started. For example, in a cloud provider,
+important IP addresses and port numbers are often assigned dynamically.
+This information is provided to the processes via environment variables.
 
-[source,clojure]
-----
-(defrecord WebService [port request-handler jetty-instance]
+Although this information _could_ be extracted by startup code, and provided
+to the `assemble-configuration` function using the :overrides configuration, that
+is both rigid and clumsy.
 
-  config/Configurable
-
-  (configure [this configuration]
-    (merge this configuration))
-
-  component/Lifecycle
-
-  (start [this]
-    (assoc :jetty-instance (jetty/run-jetty
-                              request-handler
-                              {:port port
-                               :join? false})))
-
-  (stop [this]
-    (.stop jetty-instance)
-    this))
-
-(s/defschema WebServiceConfig
-  {:port s/Int})
-
-(defn web-service
-  []
-  (-> (map->WebService {})
-      (component/using [:request-handler])
-      (config/with-config-schema :web-service WebServiceConfig)))
-----
-
-There's a number of changes:
-
-- Instead of a dependency on the configuration component, there is an additional
-  field for the port provided in the configuration.
-- WebServiceConfig is *just* the configuration of the :web-service component
-- `with-config-schema` provides an additional argument, the top-level key
-- The `configure` method is passed just the configuration for the :web-service
-  component; the map with the :port key (as defined by the WebServiceConfig schema).
-- The `start` method is invoked *after* the `configure` method, so the port
-  field is initialized.
-
-Again, it typically makes sense for the component key, the profile name, and the configuration key
-for the component to all match; in this case, the value :web-service.
-
-The startup code is slightly changed as well:
-
-[source,clojure]
-----
-(-> (component/system-map
-      :web-service (web-service)
-      :request-handler (request-handler))
-    (config/extend-system-map {:profiles [:web-service]})
-    config/configure-components
-    component/start-system)
-----
-
-The call to `configure-components` is the difference.
-
-If a component does not extend the Configurable protocol, it will
-instead have a :component key assoc'ed with the component's individual
-configuration map (not the complete system configuration).
-
-It is necessary to invoke the three-argument version of `with-config-schema`
-to trigger this behavior; otherwise `configure-components` does not know what key
-in the merged configuration map to extract for the component.
-
-== Expansions
-
-Before source content is parsed (as either YAML or EDN) it has expansions processed.
-
-An expansion is a sequence in the source text of the form `${...}`.
-
-The characters inside the braces is the key to expand.  It may be an environment variable name,
-a JVM system property, or an explicit property passed in the options to the `assemble-configuration`.
-
-This is a very useful concept, since it allows final configuration to be determined from
-environment variables supplied at runtime. You see this pattern with Docker containers, or
-AWS images using CloudFront ... a container provides details about the application and
-its dependencies via environment variables.
-
-In addition, a default value can be specified after a colon, e.g.: `${HOST:localhost}`.
-
-In our example above, the 8080 web port is just for development.
-In production, we might supply an additional production variant, and related file:
-
-[source,yaml]
-----
-web-service:
-  port: ${WS_PORT}
-----
-
-where `WS_PORT` is an environment variable.
-
-
-== EDN Reader
-
-The use of the `${...}` syntax inside EDN files is less than ideal, as it deviates from
-EDN syntax.
-
-As an alternative, you may use two EDN reader tags in your EDN files:
+Instead, it is possible to reference these dynamic properties inside the configuration
+files using the special reader macros supplied by config.
 
 #config/prop::
-    Used to handle expansions.  The value is either a single string, or a vector
-    of string and default value.
+    Accessed dynamic properties.  The value is either a single string key, or a vector
+    of string key followed by a default value.
+
+    Properties are:
+
+    * Shell environment variables.
+
+    * JVM System properties.
+
+    * The :properties option, passed to `assemble-configuration`.
 
 #config/join::
     Joins a number of values together to form a single string; this is used when
@@ -351,7 +271,7 @@ Here's an example showing all the variants:
 
 
 In this example, the `DB_USER`, `DB_PW`, `DB_HOST`, and `DB_PORT` environment variables
-all play a role (though `DB_USER` is optional).
+all play a role (though `DB_USER` is optional, since it has a default value).
 
 The configuration key [:connection-pool :url] is a single string.
 
