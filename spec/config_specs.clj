@@ -93,32 +93,6 @@
                                   :user     "prod"
                                   :password "secret"}})))
 
-  (context "expansions"
-    (it "expands environment variables"
-
-        (->> (assemble-configuration {:profiles [:env]
-                                      :schemas  [Env]})
-             (should= {:home @home})))
-
-    (it "can use a default value on an environment variable"
-        (->> (assemble-configuration {:profiles [:envdef]
-                                      :schemas  [{s/Any s/Any}]})
-             (should= {:use-default "default-plugh"
-                       :use-env     @home})))
-
-    (it "can expand non-environment variable properties"
-        (->> (assemble-configuration {:profiles   [:vars]
-                                      :properties {:special "an-option"}
-                                      :schemas    [{s/Any s/Any}]})
-             (should= {:unmatched "ok"
-                       :special   "an-option"
-                       :home      @home})))
-
-    (it "can expand JVM system properties"
-        (->> (assemble-configuration {:profiles [:sysprops]
-                                      :schemas  [{s/Any s/Any}]})
-             (should= {:user-home (System/getProperty "user.home")}))))
-
   (it "can associate and extract schemas"
       (->> [(with-config-schema {} WebServerConfig)
             {}
@@ -135,7 +109,7 @@
                    :web-server
                    :port)))
 
-  (context "EDN readers"
+  (context "EDN parsing"
 
     (context "#config/prop"
 
@@ -144,6 +118,25 @@
                                         :properties {:single-string "katmandu"}
                                         :schemas    [s/Any]})
                (should= {:just-string "katmandu"})))
+
+      (it "can use a default value"
+          (->> (assemble-configuration {:profiles [:envdef]
+                                        :schemas  [{s/Any s/Any}]})
+               (should= {:use-default "default-plugh"
+                         :use-env     @home})))
+
+      (it "can expand explicitly provided properties"
+          (->> (assemble-configuration {:profiles   [:vars]
+                                        :properties {:special "an-option"}
+                                        :schemas    [{s/Any s/Any}]})
+               (should= {:unmatched "ok"
+                         :special   "an-option"
+                         :home      @home})))
+
+      (it "can expand JVM system properties"
+          (->> (assemble-configuration {:profiles [:sysprops]
+                                        :schemas  [{s/Any s/Any}]})
+               (should= {:user-home (System/getProperty "user.home")})))
 
       (it "can expand a string using a default"
           (->> (assemble-configuration {:profiles [:default-reader]
