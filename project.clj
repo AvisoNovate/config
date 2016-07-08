@@ -1,5 +1,5 @@
 (defproject io.aviso/config "0.1.13"
-  :description "Configure a Clojure system using YAML or EDN files"
+  :description "Configure a Clojure system with EDN files"
   :url "https://github.com/AvisoNovate/config"
   :license {:name "Apache Sofware License 2.0"
             :url  "http://www.apache.org/licenses/LICENSE-2.0.html"}
