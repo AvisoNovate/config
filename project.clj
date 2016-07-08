@@ -16,7 +16,7 @@
                  [prismatic/schema "1.1.2"]
                  [com.stuartsierra/component "0.3.1"]
                  [medley "0.8.2"]]
-  :plugins [[speclj "3.3.1"]
+  :plugins [[speclj "3.3.2"]
             [lein-codox "0.9.3"]]
   :aliases {"release"    ["do"
                           "clean,"
