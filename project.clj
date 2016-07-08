@@ -11,8 +11,6 @@
   ;; List "resolved" dependencies first, which occur when there are conflicts.
   ;; We pin down the version we want, then exclude anyone who disagrees.
   :dependencies [[org.clojure/clojure "1.9.0-alpha9"]
-                 [io.aviso/pretty "0.1.27"]
-                 [io.aviso/tracker "0.1.7"]
                  [prismatic/schema "1.1.2"]
                  [com.stuartsierra/component "0.3.1"]
                  [medley "0.8.2"]]

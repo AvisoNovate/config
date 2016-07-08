@@ -149,7 +149,6 @@
       (it "will fail if unable to find property"
           (should-throw
             ExceptionInfo
-            "Unable to find value for property `single-string'."
             (assemble-configuration {:profiles [:simple-reader]
                                      :schemas  [s/Any]}))))
 

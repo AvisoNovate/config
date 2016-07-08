@@ -17,8 +17,6 @@
             [schema.utils :as su]
             [clojure.edn :as edn]
             [clojure.string :as str]
-            [io.aviso.tracker :as t]
-            [io.aviso.toolchest.macros :refer [cond-let]]
             [clojure.java.io :as io]
             [medley.core :as medley]
             [com.stuartsierra.component :as component]
@@ -72,15 +70,18 @@
 
   Returns the configuration map read from the file."
   [url properties]
-  (t/track
-    #(format "Reading configuration from `%s'." url)
+  (try
     (with-open [r (-> url
                       io/input-stream
                       io/reader
                       PushbackReader.)]
       (edn/read {:readers {'config/join join-reader
                            'config/prop (partial property-reader url properties)}}
-                r))))
+                 r))
+    (catch Throwable t
+      (throw (ex-info "Unable to read configuration file."
+                      {:url url}
+                      t)))))
 
 (defn- deep-merge
   "Merges maps, recursively. Collections accumulate, otherwise later values override
@@ -166,36 +167,26 @@
    "
   {:since "0.1.1"}
   [m arg]
-  (cond-let
-    [[_ path value] (re-matches #"([^=]+)=(.*)" arg)]
-
-    (not path)
-    (throw (IllegalArgumentException. (format "Unable to parse argument `%s'." arg)))
-
-    [keys (map keyword (str/split path #"/"))]
-
-    :else
-    (assoc-in m keys value)))
+  (let [[_ path value] (re-matches #"([^=]+)=(.*)" arg)]
+    (when-not path
+      (throw (IllegalArgumentException. (format "Unable to parse argument `%s'." arg))))
+    (let [keys (map keyword (str/split path #"/"))]
+      (assoc-in m keys value))))
 
 (defn- parse-args
   [args]
   (loop [remaining-args   args
          additional-files []
          overrides        {}]
-    (cond-let
-      (empty? remaining-args)
+    (if (empty? remaining-args)
       [additional-files overrides]
-
-      [arg (first remaining-args)]
-
-      (= "--load" arg)
-      (let [[_ file-name & more-args] remaining-args]
-        (recur more-args (conj additional-files file-name) overrides))
-
-      :else
-      (recur (rest remaining-args)
-             additional-files
-             (merge-value overrides arg)))))
+      (let [arg (first remaining-args)]
+        (if (= "--load" arg)
+          (let [[_ file-name & more-args] remaining-args]
+            (recur more-args (conj additional-files file-name) overrides))
+          (recur (rest remaining-args)
+                 additional-files
+                 (merge-value overrides arg)))))))
 
 (s/defschema ^{:added "0.1.10"} AssembleOptions
   "Defines the options passed to [[assemble-configuration]]."
@@ -354,19 +345,13 @@
 
 (defn- apply-configuration
   [component full-configuration]
-  (cond-let
-    [config-key (-> component meta ::config-key)]
-
-    (nil? config-key)
-    component
-
-    [component-configuration (get full-configuration config-key)]
-
-    (satisfies? Configurable component)
-    (configure component component-configuration)
-
-    :else
-    (assoc component :configuration component-configuration)))
+  (let [config-key (-> component meta ::config-key)]
+    (if (nil? config-key)
+      component
+      (let [component-configuration (get full-configuration config-key)]
+        (if (satisfies? Configurable component)
+          (configure component component-configuration)
+          (assoc component :configuration component-configuration))))))
 
 (defn configure-components
   "Configures the components in the system map, returning an updated system map.
