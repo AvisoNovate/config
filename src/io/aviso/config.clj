@@ -3,11 +3,9 @@
 
   Configuration data is in the form of a *set* of files (mostly on the classpath) that follow a naming convention:
 
-      conf/<profile>-<variant>.<extension>
+      conf/<profile>-<variant>.yaml
 
   The list of profiles and variants is provided by the application.
-
-  Currently, the extensions \"yaml\" and \"edn\" are supported.
 
   The configuration data is read from an appropriate set of such files, and merged together.
   The configuration is then passed through a Schema for validation and value coercion
@@ -17,7 +15,6 @@
   Coercion helps ensure that the data is both valid and in a format ready to be consumed."
   (:require [schema.coerce :as coerce]
             [schema.utils :as su]
-            [clj-yaml.core :as yaml]
             [clojure.edn :as edn]
             [clojure.string :as str]
             [io.aviso.tracker :as t]
@@ -36,7 +33,7 @@
   {:pre [(vector? values)]}
   (apply str values))
 
-(defn- expand-env-var
+(defn- expand-property
   [source env-map expansion env-var default-value]
   (or (get env-map env-var)
       default-value
@@ -58,9 +55,9 @@
              (and (vector? value)
                   (= 2 (count value))))]}
   (if (string? value)
-    (expand-env-var url env-map value value nil)
+    (expand-property url env-map value value nil)
     (let [[env-var default-value] value]
-      (expand-env-var url env-map value env-var default-value))))
+      (expand-property url env-map value env-var default-value))))
 
 
 (defn- resources
@@ -68,22 +65,6 @@
   no specific order."
   [name]
   (-> (Thread/currentThread) .getContextClassLoader (.getResources name) enumeration-seq))
-
-(defn- split-env-ref
-  [^String env-ref]
-  (let [x (.indexOf env-ref ":")]
-    (if (pos? x)
-      [(subs env-ref 0 x)
-       (subs env-ref (inc x))]
-      [env-ref])))
-
-(defn- expand-env-vars
-  [env-map source]
-  (str/replace source
-               #"\$\{((?!\$\{).*?)\}"
-               (fn [[expansion env-var-reference]]
-                 (let [[env-var default-value] (split-env-ref env-var-reference)]
-                   (expand-env-var source env-map expansion env-var default-value)))))
 
 (defn- read-single
   "Reads a single configuration file from a URL, expanding environment variables, and
@@ -93,7 +74,6 @@
     (t/track
       #(format "Reading configuration from `%s'." url)
       (->> (slurp url)
-           (expand-env-vars env-map)
            (parser url env-map)))))
 
 (defn- read-each
@@ -133,9 +113,7 @@
   "The default mapping from file extension to a [[ConfigParser]] for content from such a file.
 
   Provides parsers for the \"yaml\" and \"edn\" extensions."
-  {"yaml" (fn [_ _ content]
-            (yaml/parse-string content true))
-   "edn"  (fn [uri env-map content]
+  {"edn"  (fn [uri env-map content]
             (edn/read-string {:readers {'config/join join-reader
                                         'config/prop (partial property-reader uri env-map)}}
                              content))})

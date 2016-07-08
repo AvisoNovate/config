@@ -1,3 +1,0 @@
-home: ${HOME}
-special: ${special}
-unmatched: ${unmatched:ok}

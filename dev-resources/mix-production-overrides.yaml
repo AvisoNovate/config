@@ -1,5 +1,0 @@
-web-server:
-  pool-size: 100
-database:
-  user: prod
-  password: secret

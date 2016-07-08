@@ -1,0 +1,3 @@
+{:home      #config/prop "HOME"
+ :special   #config/prop "special"
+ :unmatched #config/prop ["unmatched" "ok"]}

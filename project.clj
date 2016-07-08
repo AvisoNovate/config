@@ -15,8 +15,7 @@
                  [io.aviso/tracker "0.1.7"]
                  [prismatic/schema "1.1.2"]
                  [com.stuartsierra/component "0.3.1"]
-                 [medley "0.8.2"]
-                 [clj-yaml "0.4.0"]]
+                 [medley "0.8.2"]]
   :plugins [[speclj "3.3.1"]
             [lein-codox "0.9.3"]]
   :aliases {"release"    ["do"

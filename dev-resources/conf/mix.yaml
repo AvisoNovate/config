@@ -1,7 +1,0 @@
-web-server:
-  port: 8000
-  pool-size: 50
-database:
-  hostname: localhost
-  user: test
-  password: donotreveal

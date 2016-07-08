@@ -1,0 +1,2 @@
+{:use-default #config/prop ["XYZZYX" "default-plugh"]
+ :use-env #config/prop ["HOME" "not-home"]}

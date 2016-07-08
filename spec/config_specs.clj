@@ -57,13 +57,6 @@
           (should= {:foo {:bar  "baz"
                           :gnip "gnop"}}))))
 
-  (it "can parse YAML"
-      (->> (assemble-configuration {:profiles [:yaml]
-                                    :schemas  [WebServerConfig]})
-           ;; note: coercion to s/Int occurred
-           (should= {:web-server {:port      8080
-                                  :pool-size 50}})))
-
   (it "can parse EDN"
       (->> (assemble-configuration {:profiles [:edn]
                                     :schemas  [WebServerConfig]})
@@ -80,7 +73,7 @@
   (it "mixes together multiple profiles and schemas"
       (->> (assemble-configuration {:profiles         [:mix]
                                     :schemas          [WebServerConfig DatabaseConfig]
-                                    :additional-files ["dev-resources/mix-production-overrides.yaml"]
+                                    :additional-files ["dev-resources/mix-production-overrides.edn"]
                                     :overrides        {:web-server {:port 9999}}})
            (should= {:web-server {:port      9999
                                   :pool-size 100}
@@ -91,7 +84,7 @@
   (it "processes arguments"
       (->> (assemble-configuration {:profiles [:mix]
                                     :schemas  [WebServerConfig DatabaseConfig]
-                                    :args     ["--load" "dev-resources/mix-production-overrides.yaml"
+                                    :args     ["--load" "dev-resources/mix-production-overrides.edn"
                                               "web-server/port=9999"
                                               "database/hostname=db"]})
            (should= {:web-server {:port      9999
@@ -104,11 +97,6 @@
     (it "expands environment variables"
 
         (->> (assemble-configuration {:profiles [:env]
-                                      :schemas  [Env]})
-             (should= {:home @home})))
-
-    (it "expands environment variables on edn files"
-        (->> (assemble-configuration {:profiles [:envedn]
                                       :schemas  [Env]})
              (should= {:home @home})))
 
