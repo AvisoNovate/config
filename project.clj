@@ -12,8 +12,7 @@
   ;; We pin down the version we want, then exclude anyone who disagrees.
   :dependencies [[org.clojure/clojure "1.9.0-alpha9"]
                  [prismatic/schema "1.1.2"]
-                 [com.stuartsierra/component "0.3.1"]
-                 [medley "0.8.2"]]
+                 [com.stuartsierra/component "0.3.1"]]
   :plugins [[speclj "3.3.2"]
             [lein-codox "0.9.3"]]
   :aliases {"release"    ["do"

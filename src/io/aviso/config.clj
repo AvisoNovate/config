@@ -18,7 +18,6 @@
             [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.java.io :as io]
-            [medley.core :as medley]
             [com.stuartsierra.component :as component]
             [schema.core :as s])
   (:import (java.io PushbackReader)))
@@ -91,6 +90,13 @@
     (map? existing) (merge-with deep-merge existing new)
     (coll? existing) (concat existing new)
     :else new))
+
+(defn- map-keys
+  [f m]
+  (reduce-kv (fn [m k v]
+               (assoc m (f k) v))
+             (empty m)
+             m))
 
 (s/defschema ^{:added "0.1.10"} ResourcePathSelector
   "Map of values passed to a [[ResourcePathGenerator]]."
@@ -278,7 +284,7 @@
         full-properties (-> (sorted-map)
                             (into (System/getenv))
                             (into (System/getProperties))
-                            (into (medley/map-keys name properties)))
+                            (into (map-keys name properties)))
         [arg-files arg-overrides] (parse-args args)
         variants'       (cons nil variants)
         raw             (for [profile profiles
