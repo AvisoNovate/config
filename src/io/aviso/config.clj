@@ -3,7 +3,7 @@
 
   Configuration data is in the form of a *set* of files (mostly on the classpath) that follow a naming convention:
 
-      conf/<profile>-<variant>.yaml
+      conf/<profile>-<variant>.edn
 
   The list of profiles and variants is provided by the application.
 
@@ -23,7 +23,7 @@
             [medley.core :as medley]
             [com.stuartsierra.component :as component]
             [schema.core :as s])
-  (:import (java.net URL)))
+  (:import (java.io PushbackReader)))
 
 (defn- join-reader
   "An EDN reader used to join together a vector of values.
@@ -33,14 +33,14 @@
   {:pre [(vector? values)]}
   (apply str values))
 
-(defn- expand-property
-  [source env-map expansion env-var default-value]
-  (or (get env-map env-var)
+(defn- get-property
+  [source properties property-key default-value]
+  (or (get properties property-key)
       default-value
-      (throw (ex-info (format "Unable to find expansion for `%s'." expansion)
-                      {:env-var      env-var
-                       :env-map-keys (keys env-map)
-                       :source       source}))))
+      (throw (ex-info (format "Unable to find value for property `%s'." property-key)
+                      {:property-key  property-key
+                       :property-keys (keys properties)
+                       :source        source}))))
 
 (defn- property-reader
   "An EDN reader used to convert either a string, or a vector of two strings, into a single
@@ -55,9 +55,9 @@
              (and (vector? value)
                   (= 2 (count value))))]}
   (if (string? value)
-    (expand-property url env-map value value nil)
-    (let [[env-var default-value] value]
-      (expand-property url env-map value env-var default-value))))
+    (get-property url env-map value nil)
+    (let [[property-key default-value] value]
+      (get-property url env-map property-key default-value))))
 
 
 (defn- resources
@@ -66,22 +66,21 @@
   [name]
   (-> (Thread/currentThread) .getContextClassLoader (.getResources name) enumeration-seq))
 
-(defn- read-single
-  "Reads a single configuration file from a URL, expanding environment variables, and
-  then parsing the resulting string."
-  [url parser env-map]
-  (when url
-    (t/track
-      #(format "Reading configuration from `%s'." url)
-      (->> (slurp url)
-           (parser url env-map)))))
+(defn- read-edn-configuration-file
+  "Reads a single configuration file from a URL with `#config/join` and `#config/prop`
+  reader macros enabled.
 
-(defn- read-each
-  "Read all resources matching a given path into a vector of parsed
-  configuration data, ready to merge"
-  [path parser env-map]
-  (let [urls (resources path)]
-    (keep #(read-single % parser env-map) urls)))
+  Returns the configuration map read from the file."
+  [url properties]
+  (t/track
+    #(format "Reading configuration from `%s'." url)
+    (with-open [r (-> url
+                      io/input-stream
+                      io/reader
+                      PushbackReader.)]
+      (edn/read {:readers {'config/join join-reader
+                           'config/prop (partial property-reader url properties)}}
+                r))))
 
 (defn- deep-merge
   "Merges maps, recursively. Collections accumulate, otherwise later values override
@@ -92,37 +91,10 @@
     (coll? existing) (concat existing new)
     :else new))
 
-(s/defschema ^{:added "0.1.10"}
-  ConfigParser
-  "A callback that is passed:
-
-  * The URL of the resource.
-
-  * The compiled environment and properties map
-
-  * The text content of the resource (after processing expansions).
-
-  The callback must return the parsed version of the content.
-
-  Each extension is mapped to a corresponding ConfigParser.
-
-  [[default-extensions]] provides the default mappings."
-  (s/=> s/Any URL {s/Str s/Str} s/Str))
-
-(def default-extensions
-  "The default mapping from file extension to a [[ConfigParser]] for content from such a file.
-
-  Provides parsers for the \"yaml\" and \"edn\" extensions."
-  {"edn"  (fn [uri env-map content]
-            (edn/read-string {:readers {'config/join join-reader
-                                        'config/prop (partial property-reader uri env-map)}}
-                             content))})
-
 (s/defschema ^{:added "0.1.10"} ResourcePathSelector
   "Map of values passed to a [[ResourcePathGenerator]]."
-  {:profile   s/Keyword
-   :variant   (s/maybe s/Keyword)
-   :extension s/Str})
+  {:profile s/Keyword
+   :variant (s/maybe s/Keyword)})
 
 (s/defschema ^{:added "0.1.10"} ResourcePathGenerator
   "A callback that converts a configuration file [[ResourcePathSelector]]
@@ -141,10 +113,7 @@
   :variant - keyword
   : variant to add to the path, or nil
 
-  :extension - string
-  : extension (e.g., \"yaml\")
-
-  The result is typically \"conf/profile-variant.ext\".
+  The result is typically \"conf/profile-variant.edn\".
 
   However, \"-variant\" is omitted when variant is nil.
 
@@ -152,14 +121,13 @@
   Although this implementation only returns a single value, supporting a seq of values
   makes it easier to extend (rather than replace) the default behavior with an override."
   [selector :- ResourcePathSelector]
-  (let [{:keys [profile variant extension]} selector]
+  (let [{:keys [profile variant]} selector]
     [(str "conf/"
           (->> [profile variant]
                (remove nil?)
                (mapv name)
                (str/join "-"))
-          "."
-          extension)]))
+          ".edn")]))
 
 (def ^{:added "0.1.9"} default-variants
   "The default list of variants. The combination of profile and variant is the main way
@@ -178,14 +146,6 @@
   development (say, to redirect a database connection to a local database), or even
   used in production."
   [:local])
-
-(defn- get-parser [^String path extensions]
-  (let [dotx      (.lastIndexOf path ".")
-        extension (subs path (inc dotx))]
-    (or (get extensions extension)
-        (throw (ex-info "Unknown extension for configuration file."
-                        {:path       path
-                         :extensions extensions})))))
 
 (defn merge-value
   "Merges a command-line argument into a map. The command line argument is of the form:
@@ -246,29 +206,19 @@
    (s/optional-key :profiles)         [s/Keyword]
    (s/optional-key :properties)       {s/Any s/Str}
    (s/optional-key :variants)         [(s/maybe s/Keyword)]
-   (s/optional-key :resource-path)    ResourcePathGenerator
-   (s/optional-key :extensions)       {s/Str ConfigParser}})
+   (s/optional-key :resource-path)    ResourcePathGenerator})
 
 (s/defn assemble-configuration
   "Reads the configuration, as specified by the options.
 
-  Inside each configuration file, the content is scanned for property expansions.
-
   Expansions allow environment variables, JVM system properties, or explicitly specific properties
-  to be substituted into the content of a configuration file, *before* it is parsed.
-
-  Expansions take two forms:
-
-  * `${ENV_VAR}`
-  * `${ENV_VAR:default-value}`
-
-  In the former case, a non-nil value for the indicated property or environment variable
-  must be available, or an exception is thrown.
-
-  In the later case, a nil value will be replaced with the indicated default value.  e.g. `${HOST:localhost}`.
 
   The :args option is passed command line arguments (as from a -main function). The arguments
   are used to add further additional files to load, and provide additional overrides.
+
+  When the EDN files are read, some reader macros are supplied to allow for some
+  dynamicism in the parsed content: this represents overrides from either shell
+  environment variables, JVM system properties, of the :properties option.
 
   Arguments are either \"--load\" followed by a path name, or \"path=value\".
 
@@ -314,13 +264,10 @@
     is always prefixed on the provided list.
 
   :resource-path
-  : A function that builds resource paths from  profile, variant, and extension.
+  : A function that builds resource paths from profile and variant.
   : The default is [[default-resource-path]], but this could be overridden
     to (for example), use a directory structure to organize configuration files
     rather than splitting up the different components of the name using dashes.
-
-  :extensions
-  : Maps from extension (e.g., \"yaml\") to an appropriate parsing function.
 
   Any additional files are loaded after all profile and variant files.
 
@@ -332,38 +279,35 @@
   (provided in the :args option) are applied."
   [options :- AssembleOptions]
   (let [{:keys [schemas overrides profiles variants
-                resource-path extensions additional-files
+                resource-path additional-files
                 args properties]
-         :or   {extensions    default-extensions
-                variants      default-variants
+         :or   {variants      default-variants
                 profiles      []
                 resource-path default-resource-path}} options
-        env-map       (-> (sorted-map)
-                          (into (System/getenv))
-                          (into (System/getProperties))
-                          (into (medley/map-keys name properties)))
+        full-properties (-> (sorted-map)
+                            (into (System/getenv))
+                            (into (System/getProperties))
+                            (into (medley/map-keys name properties)))
         [arg-files arg-overrides] (parse-args args)
-        variants'     (cons nil variants)
-        raw           (for [profile profiles
-                            variant variants'
-                            [extension parser] extensions
-                            path    (resource-path {:profile   profile
-                                                    :variant   variant
-                                                    :extension extension})]
-                        (read-each path parser env-map))
-        flattened     (apply concat raw)
-        extras        (for [path (concat additional-files arg-files)
-                            :let [parser (get-parser path extensions)]]
-                        (read-single (io/file path) parser env-map))
-        conj'         (fn [x coll] (conj coll x))
-        merged        (->> (concat flattened extras)
-                           vec
-                           (conj' overrides)
-                           (conj' arg-overrides)
-                           (apply merge-with deep-merge))
-        merged-schema (apply merge-with deep-merge schemas)
-        coercer       (coerce/coercer merged-schema coerce/string-coercion-matcher)
-        config        (coercer merged)]
+        variants'       (cons nil variants)
+        raw             (for [profile profiles
+                              variant variants'
+                              path    (resource-path {:profile profile
+                                                      :variant variant})
+                              url     (resources path)
+                              :when url]
+                          (read-edn-configuration-file url full-properties))
+        extras          (for [path (concat additional-files arg-files)]
+                          (read-edn-configuration-file (io/file path) full-properties))
+        conj'           (fn [x coll] (conj coll x))
+        merged          (->> (concat raw extras)
+                             vec
+                             (conj' overrides)
+                             (conj' arg-overrides)
+                             (apply merge-with deep-merge))
+        merged-schema   (apply merge-with deep-merge schemas)
+        coercer         (coerce/coercer merged-schema coerce/string-coercion-matcher)
+        config          (coercer merged)]
     (if (su/error? config)
       (throw (ex-info (str "The configuration is not valid: " (-> config su/error-val pr-str))
                       {:schema  merged-schema

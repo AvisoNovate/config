@@ -1,3 +1,13 @@
+## 0.1.14 - UNRELEASED
+
+A major pivot:
+
+* Use Clojure 1.9 spec instead of Prismatic Schema
+* Remove support for YAML
+* No more "expansions", just the #config/prop and #config/join reader macros
+
+
+
 ## 0.1.13 - 15 Apr 2016
 
 Fix a mis-named key in the ResourcePathSelector schema (was `:variable`, but should be

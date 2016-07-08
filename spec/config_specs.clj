@@ -150,10 +150,10 @@
                                         :schemas  [s/Any]})
                (should= {:default-value "totally handled"})))
 
-      (it "will fail if unable to expand"
+      (it "will fail if unable to find property"
           (should-throw
             ExceptionInfo
-            "Unable to find expansion for `single-string'."
+            "Unable to find value for property `single-string'."
             (assemble-configuration {:profiles [:simple-reader]
                                      :schemas  [s/Any]}))))
 
