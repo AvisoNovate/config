@@ -5,9 +5,7 @@ A major pivot:
 * Use Clojure 1.9 spec instead of Prismatic Schema
 * Remove support for YAML
 * No more "expansions", just the #config/prop and #config/join reader macros
-* New `system-schemas` function
 * No longer place a :configuration component into the system map
-
 
 ## 0.1.13 - 15 Apr 2016
 

@@ -23,14 +23,12 @@ The name of the file to read is based on the profile and the variant (described 
 The contents of all the configuration files are converted to Clojure maps and are
 deep-merged together.
 
-Meanwhile, a set of
-link:https://github.com/Prismatic/schema[schemas] are merged together, and used to validate
-the data read from the individual configuration files.
 
 The intent of profiles is that there is an approximate mapping between components and profiles:
 generally, each component will have exactly one profile.
-Each component will provide a schema (for validation and coercion) and profiles are used to ensure
-the correct configuration data is read.
+
+Each component may, optionally, define a link:http://clojure.org/guides/spec[spec] for its configuration
+data.
 
 But what about the
 link:http://12factor.net/config[12 Factor App]'s guideline to store configuration only as environment
@@ -51,6 +49,11 @@ You might define a web service as:
 
 [source,clojure]
 ----
+(require '[clojure.spec :as s]
+         '[io.aviso.config :as config]
+         '[com.example.jetty :as jetty]
+         '[com.stuartsierra.component :as component])
+
 (defrecord WebService [port request-handler jetty-instance]
 
   config/Configurable
@@ -70,14 +73,14 @@ You might define a web service as:
     (.stop jetty-instance)
     (assoc this :jetty-instance nil))
 
-(s/defschema WebServiceConfig
-  {:port s/Int})
+(s/def ::web-service-config (s/keys :req-un [::port])
+(s/def ::port (s/and int? pos?)
 
 (defn web-service
   []
   (-> (map->WebService {})
       (component/using [:request-handler])
-      (config/with-config-schema :web-service WebServiceConfig)))
+      (config/with-config-spec :web-service WebServiceConfig)))
 ----
 
 This is a standard component, with the `start` and `stop` lifecycle methods,
@@ -86,18 +89,21 @@ for the instance of Jetty managed by the component.
 
 In addition, the component is configurable: it implements the `Configurable`
 protocol, and receives its specific configuration as a map.
-The configuration passed to the component conforms to the `WebServiceConfig` schema;
+The configuration passed to the component conforms to the ::web-service-config spec;
 it will have a `:port` key.
 
 The `configure` method is invoked before the `start` method.
 
+The configuration for this component is defined by the ::web-service-config spec; it
+isjust a single key, :port, which must be a positive integer.
+
 == Providing Configuration Files
 
 Without configuration files, your application will not start up; you will see
-errors about invalid schemas, because there is (in this example)
+errors about invalid specs, because there is (in this example)
 no :web-service top-level key, and no :port key below that.
 
-Configuration files are on the class path, within a `conf` package; this means inside
+Configuration files are located on the class path, within a `conf` package; this means inside
 the `resources/conf` folder in a typical project.
 
 For the :web-service component, you would
@@ -117,22 +123,17 @@ And finally, build and start a system from all this:
 (let [system (component/system-map
                :web-service (web-service)
                :request-handler (request-handler))
-      configuration (config/assemble-configuration {:profiles [:web-service]
-                                                    :schemas  (config/system-schemas system)})]
+      configuration (config/assemble-configuration {:profiles [:web-service]})]
     (-> system
         (config/configure-components configuration)
         component/start-system))
 ----
 
 The `assemble-configuration` function reads the configuration files and returns the final
-configuration map, after reading and merging all the files, and performing all validations.
+configuration map, after reading and merging all the files.
 
-In order to do the validation, it needs the schemas; this information is placed onto the
-components by the `with-config-schema` function; the `system-schemas` function gets that
-data back.
-
-Notice the specification of the :web-service profile; this controls exactly which
-configuration files will be loaded, merged, and validated.
+Notice the specification of the :web-service profile; the :profiles option controls exactly which
+configuration files will be loaded and merged, in the specified order.
 
 The :web-service keyword is being used in three ways here:
 
@@ -158,7 +159,6 @@ when constructing the configuration map:
 [source,clojure]
 ----
    (config/assemble-configuration {:profiles  [:web-service]
-                                   :schemas   (config/system-schemas system)
                                    :overrides {:web-service {:port 9999}}})
 ----
 
@@ -172,8 +172,7 @@ and ensure that is loaded after the :web-service profile:
 
 [source,clojure]
 ----
-   (config/assemble-configuration {:profiles [:web-service :overrides]
-                                   :schemas  (config/system-schemas system)})
+   (config/assemble-configuration {:profiles [:web-service :overrides]})
 ----
 
 Another option is to support an additional _variant_ for testing.
@@ -186,7 +185,6 @@ In this case, the file name would be `web-service-overrides.edn`.
 [source,clojure]
 ----
    (config/assemble-configuration {:profiles [:web-service]
-                                   :schemas  (config/system-schemas system)
                                    :variants [:overrides]})
 ----
 
@@ -199,7 +197,6 @@ You could also explicitly load one or more configuration files stored on the fil
 [source,clojure]
 ----
    (config/assemble-configuration {:profiles         [:web-service]
-                                   :schemas          (config/system-schemas system)
                                    :additional-files ["overrides/tests.edn"]})
 ----
 
@@ -208,19 +205,8 @@ And finally, the :args option is intended to consume command line arguments:
 [source,clojure]
 ----
    (config/assemble-configuration {:profiles [:web-service]
-                                   :schemas  (config/system-schemas system)
                                    :args     ["--load" "overrides/tests.edn"]})
 ----
-
-or even:
-
-[source,clojure]
-----
-   (config/assemble-configuration {:profiles [:web-service]
-                                   :schemas  (config/system-schemas system)
-                                   :args     ["web-service/port=9999"]})
-----
-
 
 Beyond this, it is possible to override how config expects files to be named, and to support
 new formats for configuration files.
