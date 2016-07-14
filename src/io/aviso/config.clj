@@ -13,17 +13,15 @@
 
   Validation helps ensure that simple typos are caught early.
   Coercion helps ensure that the data is both valid and in a format ready to be consumed."
-  (:require [schema.coerce :as coerce]
-            [schema.utils :as su]
-            [clojure.edn :as edn]
+  (:require [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
-            [schema.core :as s])
+            [clojure.spec :as s])
   (:import (java.io PushbackReader)))
 
 (defn- join-reader
-  "An EDN reader used to join together a vector of values.
+  "An EDN reader macro used to join together a vector of values.
 
   Exposed as `#config/join`."
   [values]
@@ -35,12 +33,13 @@
   (or (get properties property-key)
       default-value
       (throw (ex-info (format "Unable to find value for property `%s'." property-key)
-                      {:property-key  property-key
+                      {:reason        ::unknown-property
+                       :property-key  property-key
                        :property-keys (keys properties)
                        :source        source}))))
 
 (defn- property-reader
-  "An EDN reader used to convert either a string, or a vector of two strings, into a single
+  "An EDN reader macro used to convert either a string, or a vector of two strings, into a single
   string, using the properties assembled for the current invocation of
   [[assemble-configuration]].
 
@@ -98,19 +97,19 @@
              (empty m)
              m))
 
-(s/defschema ^{:added "0.1.10"} ResourcePathSelector
+#_ (s/defschema ^{:added "0.1.10"} ResourcePathSelector
   "Map of values passed to a [[ResourcePathGenerator]]."
   {:profile s/Keyword
    :variant (s/maybe s/Keyword)})
 
-(s/defschema ^{:added "0.1.10"} ResourcePathGenerator
+#_ (s/defschema ^{:added "0.1.10"} ResourcePathGenerator
   "A callback that converts a configuration file [[ResourcePathSelector]]
   into some number of resource path strings.
 
   The standard implementation is [[default-resource-path]]."
   (s/=> [String] ResourcePathSelector))
 
-(s/defn default-resource-path :- [String]
+(defn default-resource-path
   "Default mapping of a resource path from profile, variant, and extension.
   A single map is passed, with the following keys:
 
@@ -127,7 +126,7 @@
   Since 0.1.10, returns a seq of files.
   Although this implementation only returns a single value, supporting a seq of values
   makes it easier to extend (rather than replace) the default behavior with an override."
-  [selector :- ResourcePathSelector]
+  [selector ]
   (let [{:keys [profile variant]} selector]
     [(str "conf/"
           (->> [profile variant]
@@ -154,50 +153,25 @@
   used in production."
   [:local])
 
-(defn merge-value
-  "Merges a command-line argument into a map. The command line argument is of the form:
-
-       path=value
-
-   where path is the path to value; it is split at slashes and the
-   individual strings converted to keywords.
-
-   e.g.
-
-       web-server/port=8080
-
-   is equivalent to
-
-       (assoc-in m [:web-server :port] \"8080\")
-
-   "
-  {:since "0.1.1"}
-  [m arg]
-  (let [[_ path value] (re-matches #"([^=]+)=(.*)" arg)]
-    (when-not path
-      (throw (IllegalArgumentException. (format "Unable to parse argument `%s'." arg))))
-    (let [keys (map keyword (str/split path #"/"))]
-      (assoc-in m keys value))))
 
 (defn- parse-args
   [args]
   (loop [remaining-args   args
-         additional-files []
-         overrides        {}]
+         additional-files []]
     (if (empty? remaining-args)
-      [additional-files overrides]
+      additional-files
       (let [arg (first remaining-args)]
         (if (= "--load" arg)
           (let [[_ file-name & more-args] remaining-args]
-            (recur more-args (conj additional-files file-name) overrides))
-          (recur (rest remaining-args)
-                 additional-files
-                 (merge-value overrides arg)))))))
+            (recur more-args (conj additional-files file-name)))
+          (throw (ex-info "Unexpected command line argument."
+                          {:reason ::command-line-parse-error
+                           :argument arg
+                           :arguments args})))))))
 
-(s/defschema ^{:added "0.1.10"} AssembleOptions
+#_ (s/defschema ^{:added "0.1.10"} AssembleOptions
   "Defines the options passed to [[assemble-configuration]]."
-  {(s/optional-key :schemas)          [s/Any]
-   (s/optional-key :additional-files) [s/Str]
+  {(s/optional-key :additional-files) [s/Str]
    (s/optional-key :args)             [s/Str]
    (s/optional-key :overrides)        s/Any
    (s/optional-key :profiles)         [s/Keyword]
@@ -205,7 +179,7 @@
    (s/optional-key :variants)         [(s/maybe s/Keyword)]
    (s/optional-key :resource-path)    ResourcePathGenerator})
 
-(s/defn assemble-configuration
+(defn assemble-configuration
   "Reads the configuration, as specified by the options.
 
   Expansions allow environment variables, JVM system properties, or explicitly specific properties
@@ -220,9 +194,6 @@
   Arguments are either \"--load\" followed by a path name, or \"path=value\".
 
   In the second case, the path and value are as defined by [[merge-value]].
-
-  :schemas
-  : A seq of schemas; these will be merged to form the full configuration schema.
 
   :additional-files
   : A seq of absolute file paths that, if they exist, will be loaded last, after all
@@ -272,10 +243,9 @@
 
   The contents of each file are deep-merged together; later files override earlier files.
 
-  Overrides via the :overrides key are applied, then overrides from command line arguments
-  (provided in the :args option) are applied."
-  [options :- AssembleOptions]
-  (let [{:keys [schemas overrides profiles variants
+  Overrides via the :overrides key are applied last; these are typically used only for testing purposes."
+  [options ]
+  (let [{:keys [overrides profiles variants
                 resource-path additional-files
                 args properties]
          :or   {variants      default-variants
@@ -285,7 +255,7 @@
                             (into (System/getenv))
                             (into (System/getProperties))
                             (into (map-keys name properties)))
-        [arg-files arg-overrides] (parse-args args)
+        arg-files (parse-args args)
         variants'       (cons nil variants)
         raw             (for [profile profiles
                               variant variants'
@@ -296,21 +266,11 @@
                           (read-edn-configuration-file url full-properties))
         extras          (for [path (concat additional-files arg-files)]
                           (read-edn-configuration-file (io/file path) full-properties))
-        conj'           (fn [x coll] (conj coll x))
-        merged          (->> (concat raw extras)
-                             vec
-                             (conj' overrides)
-                             (conj' arg-overrides)
-                             (apply merge-with deep-merge))
-        merged-schema   (apply merge-with deep-merge schemas)
-        coercer         (coerce/coercer merged-schema coerce/string-coercion-matcher)
-        config          (coercer merged)]
-    (if (su/error? config)
-      (throw (ex-info (str "The configuration is not valid: " (-> config su/error-val pr-str))
-                      {:schema  merged-schema
-                       :config  merged
-                       :failure (su/error-val config)}))
-      config)))
+        conj'           (fn [x coll] (conj coll x))]
+    (->> (concat raw extras)
+         vec
+         (conj' overrides)
+         (apply merge-with deep-merge))))
 
 (defprotocol Configurable
   (configure [this configuration]
@@ -321,43 +281,44 @@
     a component's dependencies *will* be available, but in an un-started
     state."))
 
-(defn with-config-schema
+(defn with-config-spec
   "Adds metadata to the component to define the configuration schema for the component.
 
   This defines a top-level configuration key (e.g., :web-service)
-  and a schema for just that key.
+  and a spec for just that key.
+
+  The component's specific configuration is extracted from the merged configuration,
+  and the component's config spec is used to conform it.
+  The conformed configuration is passed to the component.
 
   The component will receive *just* that configuration in its
   :configuration key.
 
   Alternately, the component may implement the
   [[Configurable]] protocol. It will be passed just its own configuration."
-  [component config-key schema]
-  (vary-meta component assoc ::config-key config-key
-             ;; This is what's merged to form the master schema
-             ::schema {config-key schema}))
-
-(defn extract-schemas
-  "For a seq of components (the values of a system map),
-   extracts the schemas associated via [[with-config-schema]], returning a seq of schemas."
-  [components]
-  (keep (comp ::schema meta) components))
-
-(defn system-schemas
-  "A convienience for extracting the schemas from a system."
-  {:added "0.1.14"}
-  [system]
-  (-> system vals extract-schemas))
+  [component config-key config-spec]
+  (vary-meta component assoc
+             ::config-key config-key
+             ;; Used to conform the component's configuration
+             ::config-spec config-spec))
 
 (defn- apply-configuration
   [component full-configuration]
-  (let [config-key (-> component meta ::config-key)]
+  (let [{:keys [::config-key ::config-spec]} (meta component)]
     (if (nil? config-key)
       component
-      (let [component-configuration (get full-configuration config-key)]
+      (let [component-configuration (get full-configuration config-key)
+            comformed-configuration (try
+                                      (s/conform config-spec component-configuration)
+                                      (catch Throwable t
+                                        (throw (ex-info "Failure configuring component."
+                                                        {:reason        ::conform-failure
+                                                         :config-key    config-key
+                                                         :configuration component-configuration}
+                                                        t))))]
         (if (satisfies? Configurable component)
-          (configure component component-configuration)
-          (assoc component :configuration component-configuration))))))
+          (configure component comformed-configuration)
+          (assoc component :configuration comformed-configuration))))))
 
 (defn configure-components
   "Configures the components in the system map, returning an updated system map.

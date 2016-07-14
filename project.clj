@@ -10,8 +10,7 @@
                              [criterium "0.4.4"]]}}
   ;; List "resolved" dependencies first, which occur when there are conflicts.
   ;; We pin down the version we want, then exclude anyone who disagrees.
-  :dependencies [[org.clojure/clojure "1.9.0-alpha9"]
-                 [prismatic/schema "1.1.2"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha10"]
                  [com.stuartsierra/component "0.3.1"]]
   :plugins [[speclj "3.3.2"]
             [lein-codox "0.9.3"]]

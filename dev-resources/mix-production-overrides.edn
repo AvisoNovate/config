@@ -1,3 +1,4 @@
 {:web-server {:pool-size 100}
- :database   {:user     "prod"
+ :database   {:hostname "prod-db"
+              :user     "prod"
               :password "secret"}}
