@@ -41,22 +41,6 @@
 
   (with-all home (System/getenv "HOME"))
 
-  (context "merge-value"
-
-    (it "throws exception when the argument can't be parsed"
-        (should-throw IllegalArgumentException "Unable to parse argument `foo/bar'."
-                      (merge-value nil "foo/bar")))
-
-    (it "builds a map from the path and value"
-        (->> (merge-value nil "foo/bar=baz")
-             (should= {:foo {:bar "baz"}})))
-
-    (it "merges into an existing map"
-        (->>
-          (merge-value {:foo {:bar "baz"}} "foo/gnip=gnop")
-          (should= {:foo {:bar  "baz"
-                          :gnip "gnop"}}))))
-
   (it "can parse EDN"
       (->> (assemble-configuration {:profiles [:edn]})
            (should= {:web-server {:port      8080
@@ -86,6 +70,15 @@
                      :database   {:hostname "prod-db"
                                   :user     "prod"
                                   :password "secret"}})))
+
+  (it "reports unexpected arguments"
+      (let [e (should-throw ExceptionInfo
+                            (assemble-configuration {:args ["--load" "override.edn" "xxx"]}))]
+        (should= "Unexpected command line argument." (.getMessage e))
+        (should= {:reason    :io.aviso.config/command-line-parse-error
+                  :argument  "xxx"
+                  :arguments ["--load" "override.edn" "xxx"]}
+                 (ex-data e))))
 
   (it "can build a system"
       (should= 9999
