@@ -90,12 +90,9 @@ for the instance of Jetty managed by the component.
 In addition, the component is configurable: it implements the `Configurable`
 protocol, and receives its specific configuration as a map.
 The configuration passed to the component conforms to the ::web-service-config spec;
-it will have a `:port` key.
+it will have a :port key.
 
 The `configure` method is invoked before the `start` method.
-
-The configuration for this component is defined by the ::web-service-config spec; it
-isjust a single key, :port, which must be a positive integer.
 
 == Providing Configuration Files
 

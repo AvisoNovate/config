@@ -55,7 +55,6 @@
     (let [[property-key default-value] value]
       (get-property url env-map property-key default-value))))
 
-
 (defn- resources
   "For a given resource name on the classpath, provides URLs for all the resources that match, in
   no specific order."
@@ -97,18 +96,6 @@
              (empty m)
              m))
 
-#_ (s/defschema ^{:added "0.1.10"} ResourcePathSelector
-  "Map of values passed to a [[ResourcePathGenerator]]."
-  {:profile s/Keyword
-   :variant (s/maybe s/Keyword)})
-
-#_ (s/defschema ^{:added "0.1.10"} ResourcePathGenerator
-  "A callback that converts a configuration file [[ResourcePathSelector]]
-  into some number of resource path strings.
-
-  The standard implementation is [[default-resource-path]]."
-  (s/=> [String] ResourcePathSelector))
-
 (defn default-resource-path
   "Default mapping of a resource path from profile, variant, and extension.
   A single map is passed, with the following keys:
@@ -121,9 +108,9 @@
 
   The result is typically \"conf/profile-variant.edn\".
 
-  However, \"-variant\" is omitted when variant is nil.
+  However, the \"-variant\" portion is omitted when variant is nil.
 
-  Since 0.1.10, returns a seq of files.
+  Returns a seq of files.
   Although this implementation only returns a single value, supporting a seq of values
   makes it easier to extend (rather than replace) the default behavior with an override."
   [selector ]
@@ -153,7 +140,6 @@
   used in production."
   [:local])
 
-
 (defn- parse-args
   [args]
   (loop [remaining-args   args
@@ -169,31 +155,17 @@
                            :argument arg
                            :arguments args})))))))
 
-#_ (s/defschema ^{:added "0.1.10"} AssembleOptions
-  "Defines the options passed to [[assemble-configuration]]."
-  {(s/optional-key :additional-files) [s/Str]
-   (s/optional-key :args)             [s/Str]
-   (s/optional-key :overrides)        s/Any
-   (s/optional-key :profiles)         [s/Keyword]
-   (s/optional-key :properties)       {s/Any s/Str}
-   (s/optional-key :variants)         [(s/maybe s/Keyword)]
-   (s/optional-key :resource-path)    ResourcePathGenerator})
-
 (defn assemble-configuration
   "Reads the configuration, as specified by the options.
-
-  Expansions allow environment variables, JVM system properties, or explicitly specific properties
 
   The :args option is passed command line arguments (as from a -main function). The arguments
   are used to add further additional files to load, and provide additional overrides.
 
   When the EDN files are read, a set of reader macros are enabled to allow for some
   dynamicism in the parsed content: this represents overrides from either shell
-  environment variables, JVM system properties, of the :properties option.
+  environment variables, JVM system properties, or the :properties option.
 
-  Arguments are either \"--load\" followed by a path name, or \"path=value\".
-
-  In the second case, the path and value are as defined by [[merge-value]].
+  Arguments are a sequence of \"--load\" followed by a path name.
 
   :additional-files
   : A seq of absolute file paths that, if they exist, will be loaded last, after all
@@ -202,8 +174,7 @@
     production configuration overrides.
 
   :args
-  : Command line arguments to parse; these yield yet more additional files and
-    the last set of overrides.
+  : Command line arguments to parse; these yield yet more additional files to load.
 
   :overrides
   : A map of configuration data that is overlayed (using a deep merge)
