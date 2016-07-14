@@ -146,6 +146,19 @@
                                                         :that-component some?)
               system-map              (component/system-map :that-component component)
               configured-system       (configure-components system-map {:that-component component-configuration})]
-          (should-be-same component-configuration (-> configured-system :that-component :captured))))))
+          (should-be-same component-configuration (-> configured-system :that-component :captured))))
+
+    (it "detects and reports configuration errors"
+        (let [system        (component/system-map :web-server (new-web-server))
+              configuration (assemble-configuration {:profiles  [:web-server]
+                                                     :overrides {:web-server {:port "not-an-int"}}})
+              e             (should-throw ExceptionInfo
+                                          (-> system
+                                              (configure-components configuration)
+                                              component/start-system))]
+          (should= :com.stuartsierra.component/component-function-threw-exception
+                   (-> e ex-data :reason))
+          (should= :io.aviso.config/invalid-component-configuration
+                   (-> e .getCause ex-data :reason))))))
 
 (run-specs)

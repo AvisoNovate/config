@@ -276,20 +276,18 @@
 (defn- apply-configuration
   [component full-configuration]
   (let [{:keys [::config-key ::config-spec]} (meta component)]
+    ;; Not all components have configuration
     (if (nil? config-key)
       component
-      (let [component-configuration (get full-configuration config-key)
-            comformed-configuration (try
-                                      (s/conform config-spec component-configuration)
-                                      (catch Throwable t
-                                        (throw (ex-info "Failure configuring component."
-                                                        {:reason        ::conform-failure
-                                                         :config-key    config-key
-                                                         :configuration component-configuration}
-                                                        t))))]
+      (let [component-configuration (get full-configuration config-key)]
+        (when-not (s/valid? config-spec component-configuration)
+          (throw (ex-info "Component configuration invalid."
+                          (assoc (s/explain-data config-spec component-configuration)
+                            :reason ::invalid-component-configuration))))
+        ;; TODO: Pass the conformed configuration?
         (if (satisfies? Configurable component)
-          (configure component comformed-configuration)
-          (assoc component :configuration comformed-configuration))))))
+          (configure component component-configuration)
+          (assoc component :configuration component-configuration))))))
 
 (defn configure-components
   "Configures the components in the system map, returning an updated system map.
