@@ -8,11 +8,8 @@
   The list of profiles and variants is provided by the application.
 
   The configuration data is read from an appropriate set of such files, and merged together.
-  The configuration is then passed through a Schema for validation and value coercion
-  (for example, to convert strings into numeric types).
 
-  Validation helps ensure that simple typos are caught early.
-  Coercion helps ensure that the data is both valid and in a format ready to be consumed."
+  Each component's individual configuration is validated and conformed against a spec that is specific to the component."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.java.io :as io]
