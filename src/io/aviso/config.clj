@@ -97,13 +97,12 @@
              m))
 
 (defn default-resource-path
-  "Default mapping of a resource path from profile, variant, and extension.
-  A single map is passed, with the following keys:
+  "Default mapping of a resource path from profile and variant.
 
-  :profile - keyword
+  profile - keyword
   : profile to add to path
 
-  :variant - keyword
+  variant - keyword
   : variant to add to the path, or nil
 
   The result is typically \"conf/profile-variant.edn\".
@@ -113,14 +112,13 @@
   Returns a seq of files.
   Although this implementation only returns a single value, supporting a seq of values
   makes it easier to extend (rather than replace) the default behavior with an override."
-  [selector ]
-  (let [{:keys [profile variant]} selector]
-    [(str "conf/"
-          (->> [profile variant]
-               (remove nil?)
-               (mapv name)
-               (str/join "-"))
-          ".edn")]))
+  [profile variant]
+  [(str "conf/"
+        (->> [profile variant]
+             (remove nil?)
+             (mapv name)
+             (str/join "-"))
+        ".edn")])
 
 (def ^{:added "0.1.9"} default-variants
   "The default list of variants. The combination of profile and variant is the main way
@@ -185,8 +183,8 @@
     The default is an empty list.
 
   :properties
-  : An optional map of properties that may be substituted, just as environment
-    variable or System properties can be. Explicit properties have higher precendence than JVM
+  : An optional map of additional properties that may be substituted (using
+    the `#config/prop` reader macro). Explicit properties have higher precendence than JVM
     system properties, which have higher precendence than environment
     variables; however the convention is that environment variable names
     are all upper case, and properties are all lower case, so actual conflicts
@@ -230,8 +228,7 @@
         variants'       (cons nil variants)
         raw             (for [profile profiles
                               variant variants'
-                              path    (resource-path {:profile profile
-                                                      :variant variant})
+                              path    (resource-path profile variant)
                               url     (resources path)
                               :when url]
                           (read-edn-configuration-file url full-properties))
@@ -245,7 +242,6 @@
 
 (defprotocol Configurable
   "Optional (but preferred) protocol for components.
-
 
   When a component declares its configuration with [[with-config-spec]], but
   does *not* implement this protocol, it will instead have a :configuration
@@ -264,7 +260,7 @@
     state."))
 
 (defn with-config-spec
-  "Adds metadata to the component to define the configuration schema for the component.
+  "Adds metadata to the component to define the configuration spec for the component.
 
   This defines a top-level configuration key (e.g., :web-service)
   and a spec for just that key.
@@ -273,11 +269,11 @@
   and the component's config spec is used to conform it.
   The conformed configuration is passed to the component.
 
-  The component will receive *just* that configuration in its
+  The component will receive *just* it's individual, conformed configuration in its
   :configuration key.
 
   Alternately, the component may implement the
-  [[Configurable]] protocol. It will be passed just its own configuration."
+  [[Configurable]] protocol. It will be passed the conformed configuration."
   [component config-key config-spec]
   (vary-meta component assoc
              ::config-key config-key
