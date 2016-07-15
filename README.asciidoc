@@ -211,8 +211,7 @@ And finally, the :args option is intended to consume command line arguments:
                                    :args     ["--load" "overrides/tests.edn"]})
 ----
 
-Beyond this, it is possible to override how config expects files to be named, and to support
-new formats for configuration files.
+Beyond this, it is possible to override how config expects files to be named.
 
 == Runtime Properties
 
