@@ -6,9 +6,11 @@
   (:import (clojure.lang ExceptionInfo)))
 
 
-(s/def ::web-server-config (s/keys :req-un [::port ::pool-size]))
+(s/def ::web-server-config (s/keys :req-un [::port ::pool-size]
+                                   :opt-un [::paths]))
 (s/def ::port (s/and int? pos?))
 (s/def ::pool-size (s/and int? pos?))
+(s/def ::paths (s/map-of simple-keyword? (s/cat :method #{:get :post} :path string?)))
 
 (s/def ::database-config (s/keys :req-un [::hostname ::user ::password]))
 (s/def ::hostname string?)
@@ -28,7 +30,7 @@
   component/Lifecycle
 
   (start [this]
-    (merge this (select-keys configuration [:port :pool-size])))
+    (merge this (select-keys configuration [:port :pool-size :paths])))
 
   (stop [this] this))
 
@@ -124,16 +126,25 @@
 
   (context "configure-components"
 
+    (with-all system (let [system        (component/system-map :web-server (new-web-server))
+                           configuration (assemble-configuration {:variants [:paths :system :local]
+                                                                  :profiles [:web-server]})]
+                       (-> system
+                           (configure-components configuration)
+                           component/start-system)))
+
+
     (it "can build a system"
         (should= 9999
-                 (let [system        (component/system-map :web-server (new-web-server))
-                       configuration (assemble-configuration {:variants [:system :local]
-                                                              :profiles [:web-server]})]
-                   (-> system
-                       (configure-components configuration)
-                       component/start-system
-                       :web-server
-                       :port))))
+                 (-> @system :web-server :port)))
+
+    (it "passes conformed configuration to component"
+        ;; These start as vectors, but via s/cat, they become maps
+        (should= {:home  {:method :get
+                          :path   "/"}
+                  :about {:method :get
+                          :path   "/about"}}
+                 (-> @system :web-server :paths)))
 
     (it "can associate configuration for a plain map component"
         (let [component-configuration {:foo :bar}

@@ -244,9 +244,20 @@
          (apply merge-with deep-merge))))
 
 (defprotocol Configurable
+  "Optional (but preferred) protocol for components.
+
+
+  When a component declares its configuration with [[with-config-spec]], but
+  does *not* implement this protocol, it will instead have a :configuration
+  key associated with it."
+
   (configure [this configuration]
     "Passes a component's individual configuration to the component,
-    as defined by the three-argument version of [[with-config-schema]].
+    as defined by [[with-config-spec]].
+
+    The component's configuration is extracted from the merged system
+    configuration and conformed; the conformed configuration is
+    passed to the component.
 
     When this is invoked (see [[configure-components]]),
     a component's dependencies *will* be available, but in an un-started
@@ -279,15 +290,16 @@
     ;; Not all components have configuration
     (if (nil? config-key)
       component
-      (let [component-configuration (get full-configuration config-key)]
-        (when-not (s/valid? config-spec component-configuration)
+      (let [component-configuration (get full-configuration config-key)
+            conformed               (s/conform config-spec component-configuration)]
+        (when (= ::s/invalid conformed)
           (throw (ex-info "Component configuration invalid."
                           (assoc (s/explain-data config-spec component-configuration)
                             :reason ::invalid-component-configuration))))
         ;; TODO: Pass the conformed configuration?
         (if (satisfies? Configurable component)
-          (configure component component-configuration)
-          (assoc component :configuration component-configuration))))))
+          (configure component conformed)
+          (assoc component :configuration conformed))))))
 
 (defn configure-components
   "Configures the components in the system map, returning an updated system map.

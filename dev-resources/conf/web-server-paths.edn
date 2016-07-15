@@ -1,0 +1,4 @@
+{:web-server
+ {:paths
+  {:home  [:get "/"]
+   :about [:get "/about"]}}}

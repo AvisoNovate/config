@@ -23,7 +23,6 @@ The name of the file to read is based on the profile and the variant (described 
 The contents of all the configuration files are converted to Clojure maps and are
 deep-merged together.
 
-
 The intent of profiles is that there is an approximate mapping between components and profiles:
 generally, each component will have exactly one profile.
 
@@ -140,6 +139,13 @@ The :web-service keyword is being used in three ways here:
 
 Unless you have a compelling reason otherwise, you should always follow this pattern; the profile name
 should match the configuration key, which should match the component key in the system map.
+
+For each component that defines a configuration spec, `configure-components` will:
+
+* Extract the component's configuration
+* Conform the configuration
+* Throw an exception if the configuration contains invalid data
+* Either invoke the `configure` method, or associate a :configuration key, providing the conformed configuration
 
 == Overrides
 
