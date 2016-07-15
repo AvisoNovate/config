@@ -1,6 +1,6 @@
-## 0.1.14 - UNRELEASED
+## 0.2.0 - UNRELEASED
 
-A major pivot:
+A major pivot, with **incompatible changes**:
 
 * Use Clojure 1.9 spec instead of Prismatic Schema
 * Remove support for YAML

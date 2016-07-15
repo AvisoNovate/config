@@ -1,6 +1,6 @@
 (ns io.aviso.config.spec
   "Utilities related to clojure.spec."
-  {:added "0.1.14"}
+  {:added "0.2.0"}
   (:require [clojure.spec :as s]
             [clojure.spec.gen :as gen]))
 
