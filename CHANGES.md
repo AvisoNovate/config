@@ -1,4 +1,4 @@
-## 0.2.0 - UNRELEASED
+## 0.2.0 - 16 Jul 2016
 
 A major pivot, with **incompatible changes**:
 
