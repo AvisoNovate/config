@@ -79,7 +79,7 @@ You might define a web service as:
   []
   (-> (map->WebService {})
       (component/using [:request-handler])
-      (config/with-config-spec :web-service WebServiceConfig)))
+      (config/with-config-spec :web-service ::web-service-config)))
 ----
 
 This is a standard component, with the `start` and `stop` lifecycle methods,
@@ -234,6 +234,8 @@ Properties are:
   * JVM System properties.
 
   * The :properties option, passed to `assemble-configuration`.
+
+The following reader macros are available:
 
 #config/prop::
     Accesses dynamic properties.
