@@ -122,7 +122,20 @@
           (->> (assemble-configuration {:profiles   [:join-reader]
                                         :properties {:magic "kazzam"}})
                (should= {:static-value "the number 2001"
-                         :prop-value   "<kazzam>"})))))
+                         :prop-value   "<kazzam>"}))))
+
+    (context "#config/long"
+      (it "can parse a string as a long"
+          (->> (assemble-configuration {:profiles [:web]
+                                        :variants [:long-reader]
+                                        :properties {"WEB_PORT" "8888"}})
+               (should= {:web-server {:port 8888}}))))
+
+    (context "#config/keyword"
+      (it "can parse a string as a keyword"
+          (->> (assemble-configuration {:profiles [:keyword-reader]
+                                        :properties {"MODE" "test"}})
+               (should= {:mode :test})))))
 
   (context "configure-components"
 

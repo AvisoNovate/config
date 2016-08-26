@@ -17,7 +17,7 @@
             [clojure.spec :as s])
   (:import (java.io PushbackReader)))
 
-(defn- join-reader
+(defn ^:private join-reader
   "An EDN reader macro used to join together a vector of values.
 
   Exposed as `#config/join`."
@@ -25,17 +25,27 @@
   {:pre [(vector? values)]}
   (apply str values))
 
-(defn- get-property
+(defn ^:private get-property
   [source properties property-key default-value]
   (or (get properties property-key)
       default-value
       (throw (ex-info (format "Unable to find value for property `%s'." property-key)
-                      {:reason        ::unknown-property
-                       :property-key  property-key
+                      {:reason ::unknown-property
+                       :property-key property-key
                        :property-keys (keys properties)
-                       :source        source}))))
+                       :source source}))))
 
-(defn- property-reader
+(defn ^:private keyword-reader
+  [v]
+  {:pre [(string? v)]}
+  (keyword v))
+
+(defn ^:private long-reader
+  [v]
+  {:pre [(string? v)]}
+  (Long/parseLong v))
+
+(defn ^:private property-reader
   "An EDN reader macro used to convert either a string, or a vector of two strings, into a single
   string, using the properties assembled for the current invocation of
   [[assemble-configuration]].
@@ -52,15 +62,14 @@
     (let [[property-key default-value] value]
       (get-property url env-map property-key default-value))))
 
-(defn- resources
+(defn ^:private resources
   "For a given resource name on the classpath, provides URLs for all the resources that match, in
   no specific order."
   [name]
   (-> (Thread/currentThread) .getContextClassLoader (.getResources name) enumeration-seq))
 
-(defn- read-edn-configuration-file
-  "Reads a single configuration file from a URL with `#config/join` and `#config/prop`
-  reader macros enabled.
+(defn ^:private read-edn-configuration-file
+  "Reads a single configuration file from a URL with several reader macros enabled.
 
   Returns the configuration map read from the file."
   [url properties]
@@ -70,14 +79,16 @@
                       io/reader
                       PushbackReader.)]
       (edn/read {:readers {'config/join join-reader
+                           'config/keyword keyword-reader
+                           'config/long long-reader
                            'config/prop (partial property-reader url properties)}}
-                 r))
+                r))
     (catch Throwable t
       (throw (ex-info "Unable to read configuration file."
                       {:url url}
                       t)))))
 
-(defn- deep-merge
+(defn ^:private deep-merge
   "Merges maps, recursively. Collections accumulate, otherwise later values override
   earlier values."
   [existing new]
@@ -86,7 +97,7 @@
     (coll? existing) (concat existing new)
     :else new))
 
-(defn- map-keys
+(defn ^:private map-keys
   [f m]
   (reduce-kv (fn [m k v]
                (assoc m (f k) v))
@@ -135,7 +146,7 @@
   used in production."
   [:local])
 
-(defn- parse-args
+(defn ^:private parse-args
   [args]
   (loop [remaining-args   args
          additional-files []]
@@ -210,18 +221,18 @@
   The contents of each file are deep-merged together; later files override earlier files.
 
   Overrides via the :overrides key are applied last; these are typically used only for testing purposes."
-  [options ]
+  [options]
   (let [{:keys [overrides profiles variants
                 resource-path additional-files
                 args properties]
-         :or   {variants      default-variants
-                profiles      []
-                resource-path default-resource-path}} options
+         :or {variants default-variants
+              profiles []
+              resource-path default-resource-path}} options
         full-properties (-> (sorted-map)
                             (into (System/getenv))
                             (into (System/getProperties))
                             (into (map-keys name properties)))
-        arg-files (parse-args args)
+        arg-files       (parse-args args)
         variants'       (cons nil variants)
         raw             (for [profile profiles
                               variant variants'
@@ -277,7 +288,7 @@
              ;; Used to conform the component's configuration
              ::config-spec config-spec))
 
-(defn- apply-configuration
+(defn ^:private apply-configuration
   [component full-configuration]
   (let [{:keys [::config-key ::config-spec]} (meta component)]
     ;; Not all components have configuration
