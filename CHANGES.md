@@ -1,4 +1,4 @@
-## 0.2.1 - UNRELEASED
+## 0.2.1 - 26 Aug 2016
 
 Added #config/long and #config/keyword reader macros.
 
