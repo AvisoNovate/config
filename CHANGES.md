@@ -1,3 +1,7 @@
+## 0.2.1 - UNRELEASED
+
+Added #config/long and #config/keyword reader macros.
+
 ## 0.2.0 - 16 Jul 2016
 
 A major pivot, with **incompatible changes**:
