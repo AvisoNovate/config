@@ -246,6 +246,12 @@ The following reader macros are available:
     Joins a number of values together to form a single string; this is used when
     an expansion should occur inside a single string.
 
+#config/long::
+    Converts a string to a long value.  Typically used with #config/prop.
+
+#config/keyword::
+    Converts a string to a keyword value. Typically used with #config/prop.
+
 Here's an example showing all the variants:
 
 [source,clojure]
@@ -257,14 +263,17 @@ Here's an example showing all the variants:
                        #config/prop "DB_HOST"
                        ":"
                        #config/prop "DB_PORT"
-                       "/accounts"]}}
+                       "/accounts"]}
+ :web-server
+ {:port #config/long #config/port "WEB_PORT"}}
 ----
 
 
-In this example, the `DB_USER`, `DB_PW`, `DB_HOST`, and `DB_PORT` environment variables
+In this example, the `DB_USER`, `DB_PW`, `DB_HOST`, and `DB_PORT`, and WEB_PORT environment variables
 all play a role (though `DB_USER` is optional, since it has a default value).
 
-In the final configuration, the key [:connection-pool :url] is a single string.
+In the final configuration, the key [:connection-pool :url] is a single string, and the key
+[:web-server :port] is a long (not a string).
 
 == License
 
