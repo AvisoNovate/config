@@ -1,4 +1,4 @@
-## 0.2.2 - UNRELEASED
+## 0.2.2 - 2 Dec 2016
 
 Remove the :args option, and add basic clojure.spec support for the options passed to 
 `assemble-configuration`.
