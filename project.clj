@@ -1,4 +1,4 @@
-(defproject io.aviso/config "0.2.1"
+(defproject io.aviso/config "0.2.2"
   :description "Configure a Clojure system with EDN files"
   :url "https://github.com/AvisoNovate/config"
   :license {:name "Apache Sofware License 2.0"
@@ -13,7 +13,7 @@
   :dependencies [[org.clojure/clojure "1.9.0-alpha10"]
                  [com.stuartsierra/component "0.3.1"]]
   :plugins [[speclj "3.3.2"]
-            [lein-codox "0.9.3"]]
+            [lein-codox "0.10.2"]]
   :aliases {"release"    ["do"
                           "clean,"
                           "spec,",

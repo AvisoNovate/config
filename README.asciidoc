@@ -72,14 +72,14 @@ You might define a web service as:
     (.stop jetty-instance)
     (assoc this :jetty-instance nil))
 
-(s/def ::web-service-config (s/keys :req-un [::port])
 (s/def ::port (s/and int? pos?)
+(s/def ::config (s/keys :req-un [::port])
 
 (defn web-service
   []
   (-> (map->WebService {})
       (component/using [:request-handler])
-      (config/with-config-spec :web-service ::web-service-config)))
+      (config/with-config-spec :web-service ::config)))
 ----
 
 This is a standard component, with the `start` and `stop` lifecycle methods,
@@ -201,14 +201,6 @@ You could also explicitly load one or more configuration files stored on the fil
 ----
    (config/assemble-configuration {:profiles         [:web-service]
                                    :additional-files ["overrides/tests.edn"]})
-----
-
-And finally, the :args option is intended to consume command line arguments:
-
-[source,clojure]
-----
-   (config/assemble-configuration {:profiles [:web-service]
-                                   :args     ["--load" "overrides/tests.edn"]})
 ----
 
 Beyond this, it is possible to override how config expects files to be named.

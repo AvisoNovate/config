@@ -2,9 +2,12 @@
   (:use io.aviso.config
         speclj.core)
   (:require [com.stuartsierra.component :as component]
-            [clojure.spec :as s])
+            [clojure.spec :as s]
+            [clojure.spec.test :as stest])
   (:import (clojure.lang ExceptionInfo)))
 
+
+(stest/instrument `assemble-configuration)
 
 (s/def ::web-server-config (s/keys :req-un [::port ::pool-size]
                                    :opt-un [::paths]))
@@ -63,26 +66,6 @@
                      :database   {:hostname "prod-db"
                                   :user     "prod"
                                   :password "secret"}})))
-
-  (context ":args options"
-    (it "processes arguments"
-        (->> (assemble-configuration {:profiles [:mix]
-                                      :args     ["--load" "dev-resources/mix-production-overrides.edn"]})
-             (should= {:web-server {:port      8000
-                                    :pool-size 100}
-                       :database   {:hostname "prod-db"
-                                    :user     "prod"
-                                    :password "secret"}})))
-
-    (it "reports unexpected arguments"
-        (let [e (should-throw ExceptionInfo
-                              (assemble-configuration {:args ["--load" "override.edn" "xxx"]}))]
-          (should= "Unexpected command line argument." (.getMessage e))
-          (should= {:reason    :io.aviso.config/command-line-parse-error
-                    :argument  "xxx"
-                    :arguments ["--load" "override.edn" "xxx"]}
-                   (ex-data e)))))
-
   (context "EDN reader macros"
 
     (context "#config/prop"

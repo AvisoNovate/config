@@ -1,3 +1,8 @@
+## 0.2.2 - UNRELEASED
+
+Remove the :args option, and add basic clojure.spec support for the options passed to 
+`assemble-configuration`.
+
 ## 0.2.1 - 26 Aug 2016
 
 Added #config/long and #config/keyword reader macros.
@@ -13,8 +18,8 @@ A major pivot, with **incompatible changes**:
 
 ## 0.1.13 - 15 Apr 2016
 
-Fix a mis-named key in the ResourcePathSelector schema (was `:variable`, but should be
-`:variant`).
+Fix a mis-named key in the ResourcePathSelector schema (was :variable, but should be
+:variant).
 
 ## 0.1.12 - 25 Mar 2016
 

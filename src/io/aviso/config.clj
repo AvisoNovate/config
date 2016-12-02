@@ -146,41 +146,18 @@
   used in production."
   [:local])
 
-(defn ^:private parse-args
-  [args]
-  (loop [remaining-args   args
-         additional-files []]
-    (if (empty? remaining-args)
-      additional-files
-      (let [arg (first remaining-args)]
-        (if (= "--load" arg)
-          (let [[_ file-name & more-args] remaining-args]
-            (recur more-args (conj additional-files file-name)))
-          (throw (ex-info "Unexpected command line argument."
-                          {:reason ::command-line-parse-error
-                           :argument arg
-                           :arguments args})))))))
-
 (defn assemble-configuration
   "Reads the configuration, as specified by the options.
-
-  The :args option is passed command line arguments (as from a -main function). The arguments
-  are used to add further additional files to load, and provide additional overrides.
 
   When the EDN files are read, a set of reader macros are enabled to allow for some
   dynamicism in the parsed content: this represents overrides from either shell
   environment variables, JVM system properties, or the :properties option.
-
-  Arguments are a sequence of \"--load\" followed by a path name.
 
   :additional-files
   : A seq of absolute file paths that, if they exist, will be loaded last, after all
     normal resources.
     This is typically used to provide an editable (outside the classpath) file for final
     production configuration overrides.
-
-  :args
-  : Command line arguments to parse; these yield yet more additional files to load.
 
   :overrides
   : A map of configuration data that is overlayed (using a deep merge)
@@ -216,15 +193,13 @@
 
   Any additional files are loaded after all profile and variant files.
 
-  Files specified via `--load` arguments are then loaded.
-
   The contents of each file are deep-merged together; later files override earlier files.
 
   Overrides via the :overrides key are applied last; these are typically used only for testing purposes."
   [options]
   (let [{:keys [overrides profiles variants
                 resource-path additional-files
-                args properties]
+                properties]
          :or {variants default-variants
               profiles []
               resource-path default-resource-path}} options
@@ -232,7 +207,6 @@
                             (into (System/getenv))
                             (into (System/getProperties))
                             (into (map-keys name properties)))
-        arg-files       (parse-args args)
         variants'       (cons nil variants)
         raw             (for [profile profiles
                               variant variants'
@@ -240,13 +214,24 @@
                               url     (resources path)
                               :when url]
                           (read-edn-configuration-file url full-properties))
-        extras          (for [path (concat additional-files arg-files)]
+        extras          (for [path additional-files]
                           (read-edn-configuration-file (io/file path) full-properties))
         conj'           (fn [x coll] (conj coll x))]
     (->> (concat raw extras)
          vec
          (conj' overrides)
          (apply merge-with deep-merge))))
+
+(s/def ::profiles (s/coll-of keyword?))
+(s/def ::variants (s/coll-of keyword?))
+(s/def ::additional-files (s/coll-of string?))
+(s/def ::overrides map?)
+(s/def ::properties map?)
+(s/def ::resource-path fn?)
+
+(s/fdef assemble-configuration :args (s/cat :options
+                                            (s/keys :opt-un [::profiles ::variants ::overrides ::properties ::resource-path ::additional-files]))
+        :ret map?)
 
 (defprotocol Configurable
   "Optional (but preferred) protocol for components.
