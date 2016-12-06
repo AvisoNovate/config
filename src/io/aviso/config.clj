@@ -14,7 +14,8 @@
             [clojure.string :as str]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
-            [clojure.spec :as s])
+            [clojure.spec :as s]
+            [com.stuartsierra.dependency :as dep])
   (:import (java.io PushbackReader)))
 
 (defn ^:private join-reader
@@ -165,7 +166,8 @@
 
   :profiles
   : A seq of keywords that identify which profiles should be loaded and in what order.
-    The default is an empty list.
+    The default is an empty list.  [[configure-using]] will provide default
+    profiles based on the config key specified by [[with-config-spec]].
 
   :properties
   : An optional map of additional properties that may be substituted (using
@@ -294,10 +296,35 @@
   "Configures the components in the system map, returning an updated system map.
 
   Typically, this should be invoked *before* the system is started, as most
-  components are expected to need configuration in order to start."
+  components are expected to need configuration in order to start.
+
+  This function has effectively been replaced by [[configure-using]]."
   {:added "0.1.9"}
-  [system-map configuration]
-  (component/update-system system-map
-                           (keys system-map)
+  [system configuration]
+  (component/update-system system
+                           (keys system)
                            apply-configuration
                            configuration))
+
+(defn configure-using
+  "Configures the components in the system map, returning an updated system map.
+
+  The options are enhanced and passed to [[assemble-configuraton]]; the resulting
+  configuration is applied using [[configure-components]].
+
+  The system map is scanned for components that have used the [[with-config-spec]]
+  function; the configuration key is extracted (in dependency order)
+  and prefixes any values provided in the :profiles option key."
+  {:added "vNEXT"}
+  [system options]
+  (let [component-keys    (keys system)
+        graph             (component/dependency-graph system component-keys)
+        ordered           (sort (dep/topo-comparator graph) component-keys)
+        implicit-profiles (keep (comp ::config-key
+                                      meta
+                                      #(get system %))
+                                ordered)
+        configuration     (-> options
+                              (update :profiles #(concat implicit-profiles %))
+                              assemble-configuration)]
+    (configure-components system configuration)))

@@ -1,3 +1,8 @@
+## vNEXT - UNRELEASED
+
+Added `configure-using` to assemble a configuration, including default profiles,
+and then apply it to a system.
+
 ## 0.2.2 - 2 Dec 2016
 
 Remove the :args option, and add basic clojure.spec support for the options passed to 

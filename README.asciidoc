@@ -118,18 +118,21 @@ And finally, build and start a system from all this:
 ----
 (let [system (component/system-map
                :web-service (web-service)
-               :request-handler (request-handler))
-      configuration (config/assemble-configuration {:profiles [:web-service]})]
+               :request-handler (request-handler))]
     (-> system
-        (config/configure-components configuration)
+        (config/configure-using nil)
         component/start-system))
 ----
 
-The `assemble-configuration` function reads the configuration files and returns the final
-configuration map, after reading and merging all the files.
+The `configure-using` function reads the configuration files and returns the final
+configuration map, after reading and merging all the files and apply the configuration
+to each component.
 
-Notice the specification of the :web-service profile; the :profiles option controls exactly which
-configuration files will be loaded and merged, in the specified order.
+The second parameter to `configure-using` is map of options.
+
+`configure-using` generates default profiles from components that declare
+a configuration key using `with-config-spec`.
+Here, the default list of profiles is just :web-service.
 
 The :web-service keyword is being used in three ways here:
 
@@ -140,7 +143,7 @@ The :web-service keyword is being used in three ways here:
 Unless you have a compelling reason otherwise, you should always follow this pattern; the profile name
 should match the configuration key, which should match the component key in the system map.
 
-For each component that defines a configuration spec, `configure-components` will:
+For each component that defines a configuration spec, `configure-using` will:
 
 * Extract the component's configuration
 * Conform the configuration
@@ -161,8 +164,7 @@ when constructing the configuration map:
 
 [source,clojure]
 ----
-   (config/assemble-configuration {:profiles  [:web-service]
-                                   :overrides {:web-service {:port 9999}}})
+   (config/configure-using {:overrides {:web-service {:port 9999}}})
 ----
 
 However, that option is generally intended for special cases, such as overrides
@@ -175,8 +177,12 @@ and ensure that is loaded after the :web-service profile:
 
 [source,clojure]
 ----
-   (config/assemble-configuration {:profiles [:web-service :overrides]})
+   (config/configure-using {:profiles [:overrides]})
 ----
+
+Implicit profiles, via `with-config-spec` are loaded first, then explicit profiles in the options.
+Order can be important here, and later-loaded profiles will override earlier profiles
+if there are conflicts.
 
 Another option is to support an additional _variant_ for testing.
 
@@ -187,8 +193,7 @@ In this case, the file name would be `web-service-overrides.edn`.
 
 [source,clojure]
 ----
-   (config/assemble-configuration {:profiles [:web-service]
-                                   :variants [:overrides]})
+   (config/configure-using {:variants [:overrides]})
 ----
 
 The nil variant (`web-service.edn`) is always loaded first to provide the defaults,
@@ -199,11 +204,11 @@ You could also explicitly load one or more configuration files stored on the fil
 
 [source,clojure]
 ----
-   (config/assemble-configuration {:profiles         [:web-service]
-                                   :additional-files ["overrides/tests.edn"]})
+   (config/configure-using {:additional-files ["overrides/tests.edn"]})
 ----
 
-Beyond this, it is possible to override how config expects files to be named.
+Beyond this, it is possible to override how config maps between profile names
+and the actual configuration files (see the API documentation for details).
 
 == Runtime Properties
 

@@ -168,6 +168,23 @@
           (should= :com.stuartsierra.component/component-function-threw-exception
                    (-> e ex-data :reason))
           (should= :io.aviso.config/invalid-component-configuration
-                   (-> e .getCause ex-data :reason))))))
+                   (-> e .getCause ex-data :reason)))))
+
+  (context "configure-using"
+    (it "uses profile from config-key"
+        (let [component (-> {}
+                            (with-config-spec :sample some?))
+              system (-> (component/system-map :sample component)
+                         (configure-using nil))]
+          (should= :default
+                   (-> system :sample :configuration :widget))))
+
+    (it "orders explicit profiles last"
+        (let [component (-> {}
+                            (with-config-spec :sample some?))
+              system (-> (component/system-map :sample component)
+                         (configure-using {:profiles [:override]}))]
+          (should= :overidden
+                   (-> system :sample :configuration :widget))))))
 
 (run-specs)
