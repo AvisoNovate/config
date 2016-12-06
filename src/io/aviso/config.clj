@@ -315,7 +315,7 @@
   The system map is scanned for components that have used the [[with-config-spec]]
   function; the configuration key is extracted (in dependency order)
   and prefixes any values provided in the :profiles option key."
-  {:added "vNEXT"}
+  {:added "v20161206"}
   [system options]
   (let [component-keys    (keys system)
         graph             (component/dependency-graph system component-keys)
