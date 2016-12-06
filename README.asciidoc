@@ -37,8 +37,8 @@ at runtime.
 
 At link:http://www.aviso.io/[Aviso], we use these features in a number of ways.
 For example, for quick testing we combine a number of microservices (each of which
-has its own configuration profile and schema) together into a single system, and specify a large set of profiles.
-Meanwhile, in production (on AWS) we can build a smaller system with a single microservice, and single profile.
+has its own configuration profile and schema) together into a single system.
+Meanwhile, in production (on AWS) we can build a smaller system with a single microservice.
 We can also provide an additional configuration file that enables configuration overrides based on environment variables
 set by CloudFormation.
 
@@ -88,7 +88,7 @@ for the instance of Jetty managed by the component.
 
 In addition, the component is configurable: it implements the `Configurable`
 protocol, and receives its specific configuration as a map.
-The configuration passed to the component conforms to the ::web-service-config spec;
+The configuration passed to the component conforms to the ::config spec;
 it will have a :port key.
 
 The `configure` method is invoked before the `start` method.
@@ -124,14 +124,15 @@ And finally, build and start a system from all this:
         component/start-system))
 ----
 
-The `configure-using` function reads the configuration files and returns the final
-configuration map, after reading and merging all the files and apply the configuration
-to each component.
+The `configure-using` function reads the configuration files and assembles the configuration map,
+then applies the the configuration to each component.
 
 The second parameter to `configure-using` is map of options.
 
-`configure-using` generates default profiles from components that declare
-a configuration key using `with-config-spec`.
+`configure-using` generates default profiles from components in the system.
+Any component that declared a configuration key using `with-config-spec`
+will be included.
+
 Here, the default list of profiles is just :web-service.
 
 The :web-service keyword is being used in three ways here:
@@ -143,6 +144,10 @@ The :web-service keyword is being used in three ways here:
 Unless you have a compelling reason otherwise, you should always follow this pattern; the profile name
 should match the configuration key, which should match the component key in the system map.
 
+The default profiles are in dependency order.
+If :request-handler has a configuration key, then it will be ordered ahead of :web-service, because
+the :web-service component depends on the :request-handler component.
+
 For each component that defines a configuration spec, `configure-using` will:
 
 * Extract the component's configuration
@@ -150,7 +155,7 @@ For each component that defines a configuration spec, `configure-using` will:
 * Throw an exception if the configuration contains invalid data
 * Either invoke the `configure` method, or associate a :configuration key, providing the conformed configuration
 
-== Overrides
+== Configuration Overrides
 
 But what if you want to override part of the :web-service configuration ...
 for example, to specify a different port?
@@ -158,6 +163,8 @@ This is very common ... your local development configuration is going to vary co
 your deployed production configuration.
 
 This can be accomplished in a number of ways.
+
+=== Explicit Overrides
 
 First off all, it is possible to provide an explicit map of overrides
 when constructing the configuration map:
@@ -172,6 +179,8 @@ during testing.
 
 Most other approaches involve controlling which files are loaded to form the system configuration.
 
+=== Explicit Profiles
+
 So if you wish to have some overrides, you could provide a configuration file named `overrides.edn`
 and ensure that is loaded after the :web-service profile:
 
@@ -184,31 +193,39 @@ Implicit profiles, via `with-config-spec` are loaded first, then explicit profil
 Order can be important here, and later-loaded profiles will override earlier profiles
 if there are conflicts.
 
-Another option is to support an additional _variant_ for testing.
+=== Variants
+
+Another option is to support an additional _variant_ to customize the configuration.
 
 For each profile, config searches for any variant.
 
-In this case, the file name would be `web-service-overrides.edn`.
-`web-service` comes from the profile and `overrides` from the variant.
+In this case, the file name would be `web-service-production.edn`.
+`web-service` comes from the profile and `production` from the variant.
 
 [source,clojure]
 ----
-   (config/configure-using {:variants [:overrides]})
+   (config/configure-using {:variants [:production]})
 ----
 
 The nil variant (`web-service.edn`) is always loaded first to provide the defaults,
 the provided variants (when they exist) overlay the nil variant.
+
+In this example, the normal configuration is safe; it's for local testing.
+Only when deploying to production does the :production variant get added in.
+
+=== Additional Files
 
 You could also explicitly load one or more configuration files stored on the file system
 (rather than as classpath resources):
 
 [source,clojure]
 ----
-   (config/configure-using {:additional-files ["overrides/tests.edn"]})
+   (config/configure-using {:additional-files ["overrides/production.edn"]})
 ----
 
-Beyond this, it is possible to override how config maps between profile names
-and the actual configuration files (see the API documentation for details).
+This is another possible way to provide overrides that only apply in production;
+the difference being that this file is on the file system, not packaged inside the
+application JARs.
 
 == Runtime Properties
 
@@ -241,7 +258,7 @@ The following reader macros are available:
 
 #config/join::
     Joins a number of values together to form a single string; this is used when
-    an expansion should occur inside a single string.
+    an building a single string from a mix of properties and static text.
 
 #config/long::
     Converts a string to a long value.  Typically used with #config/prop.
