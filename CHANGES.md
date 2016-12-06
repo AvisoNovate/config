@@ -1,4 +1,4 @@
-## vNEXT - UNRELEASED
+## v20161206
 
 Added `configure-using` to assemble a configuration, including default profiles,
 and then apply it to a system.

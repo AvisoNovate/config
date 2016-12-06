@@ -1,4 +1,4 @@
-(defproject io.aviso/config "vNEXT"
+(defproject io.aviso/config "v20161206"
   :description "Configure a Clojure system with EDN files"
   :url "https://github.com/AvisoNovate/config"
   :license {:name "Apache Sofware License 2.0"
