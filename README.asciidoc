@@ -235,7 +235,7 @@ important IP addresses and port numbers are often assigned dynamically.
 This information is provided to the processes via environment variables.
 
 Although this information _could_ be extracted by startup code, and provided
-to the `assemble-configuration` function using the :overrides configuration, that
+to the `configure-using` function using the :overrides configuration, that
 is both rigid and clumsy.
 
 Instead, it is possible to reference these dynamic properties inside the configuration
@@ -247,7 +247,7 @@ Properties are:
 
   * JVM System properties.
 
-  * The :properties option, passed to `assemble-configuration`.
+  * The :properties option, passed to `configure-using`.
 
 The following reader macros are available:
 
