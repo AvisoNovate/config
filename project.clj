@@ -1,4 +1,4 @@
-(defproject io.aviso/config "v20161206"
+(defproject io.aviso/config "0.2.4"
   :description "Configure a Clojure system with EDN files"
   :url "https://github.com/AvisoNovate/config"
   :license {:name "Apache Sofware License 2.0"
@@ -6,12 +6,11 @@
   :profiles {:dev
              {:dependencies [[speclj "3.3.2"]
                              [org.clojure/test.check "0.9.0"]
-                             [ch.qos.logback/logback-classic "1.1.7"]
+                             [io.aviso/logging "0.2.0"]
                              [criterium "0.4.4"]]}}
-  ;; List "resolved" dependencies first, which occur when there are conflicts.
-  ;; We pin down the version we want, then exclude anyone who disagrees.
-  :dependencies [[org.clojure/clojure "1.9.0-alpha14"]
-                 [com.stuartsierra/component "0.3.1"]]
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [clojure-future-spec "1.9.0-alpha14"]
+                 [com.stuartsierra/component "0.3.2"]]
   :plugins [[speclj "3.3.2"]
             [lein-codox "0.10.2"]]
   :aliases {"release"    ["do"

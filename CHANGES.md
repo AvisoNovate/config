@@ -1,3 +1,10 @@
+## 0.2.4 - 14 Apr 2017
+
+Ok, back to semantic numbering.
+
+This downgrades config to Clojure 1.8, and uses clojure-future-spec to
+fill the gaps.
+
 ## v20161206
 
 Added `configure-using` to assemble a configuration, including default profiles,
