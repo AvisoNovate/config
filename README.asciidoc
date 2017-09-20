@@ -1,6 +1,9 @@
 = Config - Smart and flexible system configuration
 
-image:http://clojars.org/io.aviso/config/latest-version.svg[Clojars Project, link="http://clojars.org/io.aviso/config"]
+image:http://clojars.org/sharetribe/config/latest-version.svg[Clojars Project, link="http://clojars.org/sharetribe/config"]
+
+This is fork of
+link:https://github.com/AvisoNovate/config[io.aviso/config] that depends on Clojure 1.9.0-beta1+.
 
 Config is a very small library used to handle configuration of a server; it works
 quite well with a system defined in terms of
@@ -48,7 +51,7 @@ You might define a web service as:
 
 [source,clojure]
 ----
-(require '[clojure.spec :as s]
+(require '[clojure.spec.alpha :as s]
          '[io.aviso.config :as config]
          '[com.example.jetty :as jetty]
          '[com.stuartsierra.component :as component])
