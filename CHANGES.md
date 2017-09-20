@@ -1,3 +1,7 @@
+## Unreleased
+
+* Change dependency on Clojure to 1.9.0-beta1 and support clojure.spec.alpha ns.
+
 ## 0.2.4 - 14 Apr 2017
 
 Ok, back to semantic numbering.
