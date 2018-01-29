@@ -279,7 +279,7 @@ Here's an example showing all the variants:
                        #config/prop "DB_PORT"
                        "/accounts"]}
  :web-server
- {:port #config/long #config/port "WEB_PORT"}}
+ {:port #config/long #config/prop "WEB_PORT"}}
 ----
 
 
