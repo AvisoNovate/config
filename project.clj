@@ -9,7 +9,7 @@
                              [io.aviso/logging "0.2.0"]
                              [criterium "0.4.4"]]}}
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [clojure-future-spec "1.9.0-alpha14"]
+                 [clojure-future-spec "1.9.0-beta4"]
                  [com.stuartsierra/component "0.3.2"]]
   :plugins [[speclj "3.3.2"]
             [lein-codox "0.10.2"]]

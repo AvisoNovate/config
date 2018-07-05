@@ -14,7 +14,7 @@
             [clojure.string :as str]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [com.stuartsierra.dependency :as dep])
   (:import (java.io PushbackReader)))
 
