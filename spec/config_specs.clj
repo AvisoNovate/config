@@ -2,8 +2,6 @@
   (:use io.aviso.config
         speclj.core)
   (:require [com.stuartsierra.component :as component]
-            [clojure.future :refer [int?
-                                    simple-keyword?]]
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest])
   (:import (clojure.lang ExceptionInfo)))
